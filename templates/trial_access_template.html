@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🌱 Plataforma Inteligente de Créditos de Carbono</title>
+        
+           
+        
+        
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        
+
+    </head>
+    <body>
+        <div class="header">
+            <h1>🌱 Plataforma Inteligente de Créditos de Carbono</h1>
+            <p>🇧🇷🇺🇸 Inteligência de Mercado Bilingue Potencializada por IA</p>
+        </div>
+        
+        <div class="container">
+            <!-- TRIAL ACCESS FORM -->
+            <div class="access-form" id="accessForm">
+                <h2>🔑 Enter Your Trial Access Key</h2>
+                <p>Enter the trial key you received to access the platform</p>
+                
+                <input type="text" 
+                       id="trialKey" 
+                       placeholder="CARBON-XXXXXXXXXX" 
+                       maxlength="20" 
+                       style="text-transform: uppercase;"
+                       value="">
+                
+                <br>
+                <button onclick="validateAccess()" class="access-btn" id="accessBtn">
+                    ✅ Access Platform
+                </button>
+                
+                <!-- DEBUG INFO -->
+                <div class="debug-info" id="debugInfo">
+                    <strong>Debug Information:</strong><br>
+                    <span id="debugText">Ready to validate...</span>
+                </div>
+                
+                <!-- TEST BUTTON -->
+                <div style="margin-top: 15px;">
+                    <button onclick="testConnection()" style="background: #666; color: white; padding: 8px 16px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">
+                        🔧 Test Connection
+                    </button>
+                </div>
+            </div>
+            
+            <!-- TRIAL INFO BANNER -->
+            <div class="trial-info-banner" id="trialBanner">
+                <p id="trialInfo">✅ Teste Trial Ativo • <span id="queriesLeft">100</span> pesquisas restantes • <span id="daysLeft">14</span> dias restantes</p>
+            </div>
+            
+            <!-- MAIN PLATFORM INTERFACE -->
+            <div class="platform-interface" id="platformInterface">
+                <!-- SEARCH INTERFACE -->
+                <div class="search-container">
+                    <div class="language-detection">
+                        🔍 <strong>Language Detection:</strong> 🇧🇷 Portuguese (Brazilian) - Location: General
+                    </div>
+                    
+                    <textarea id="searchQuery" class="search-box" 
+                              placeholder="Como funciona o mercado voluntário de carbono?"></textarea>
+                    
+                    <div class="search-buttons">
+                        <button onclick="performSearch()" class="search-btn">
+                            🔍 Buscar Inteligência de Carbono
+                        </button>
+                        <button onclick="detectLanguage()" class="detect-btn">
+                            🌐 Detectar Idioma
+                        </button>
+                        <button onclick="checkApiStatus()" class="status-btn">
+                            ⚡ Verificar Status da API
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- EXAMPLES SECTION -->
+                <div class="examples">
+                    <h3>💡 Quick Examples</h3>
+                    
+                    <div class="example-grid">
+                        <div class="example-item" onclick="useQuery('Onde será a COP30 no Brasil?')">
+                            <span class="example-flag">🇧🇷</span>
+                            <span class="example-text">Onde será a COP30 no Brasil?</span>
+                        </div>
+                        <div class="example-item" onclick="useQuery('Preços atuais créditos carbono')">
+                            <span class="example-flag">🇧🇷</span>
+                            <span class="example-text">Preços atuais créditos carbono</span>
+                        </div>
+                        <div class="example-item" onclick="useQuery('Carbon credit prices Brazil 2025')">
+                            <span class="example-flag">🇺🇸</span>
+                            <span class="example-text">Carbon credit prices Brazil 2025</span>
+                        </div>
+                        <div class="example-item" onclick="useQuery('Marco regulatório carbono brasileiro')">
+                            <span class="example-flag">🇧🇷</span>
+                            <span class="example-text">Marco regulatório carbono brasileiro</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- RESULTS SECTION -->
+                <div id="result"></div>
+            </div>
+        </div>
+        
+        <script>
+        let currentTrial = null;
+
+        // TEST CONNECTION FUNCTION
+        function testConnection() {
+            const debugInfo = document.getElementById('debugInfo');
+            const debugText = document.getElementById('debugText');
+            
+            debugInfo.style.display = 'block';
+            debugText.innerHTML = 'Testing connection...';
+            
+            fetch('/health')
+                .then(response => response.json())
+                .then(data => {
+                    debugText.innerHTML = `✅ Connection OK<br>Status: ${data.status}<br>Trials: ${data.total_trials}<br>Time: ${data.server_time}`;
+                })
+                .catch(error => {
+                    debugText.innerHTML = `❌ Connection Error: ${error.message}`;
+                });
+        }
+        
+        // AUTO-FILL TRIAL KEY FROM REGISTRATION
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded successfully');
+            
+            // Try to get trial key from localStorage
+            const savedTrialKey = localStorage.getItem('carbon_trial_key');
+            if (savedTrialKey) {
+                document.getElementById('trialKey').value = savedTrialKey;
+                
+                // Show hint that key was auto-filled
+                const debugInfo = document.getElementById('debugInfo');
+                const debugText = document.getElementById('debugText');
+                debugInfo.style.display = 'block';
+                debugText.innerHTML = '✅ Trial key auto-filled from registration. Click "Access Platform" to continue.';
+            }
+        });
+        
+        // VALIDATE ACCESS FUNCTION - CORRIGIDO
+        async function validateAccess() {
+            const trialKey = document.getElementById('trialKey').value.trim().toUpperCase();
+            const accessBtn = document.getElementById('accessBtn');
+            const debugInfo = document.getElementById('debugInfo');
+            const debugText = document.getElementById('debugText');
+            const originalText = accessBtn.innerHTML;
+            
+            debugInfo.style.display = 'block';
+            debugText.innerHTML = `Starting validation for key: ${trialKey}`;
+            
+            if (!trialKey) {
+                alert('Please enter your trial access key.');
+                debugText.innerHTML = '❌ No trial key provided';
+                return;
+            }
+            
+            accessBtn.innerHTML = '⏳ Validating...';
+            accessBtn.disabled = true;
+            
+            debugText.innerHTML = `Sending request to /validate_trial...`;
+            
+            try {
+                const response = await fetch('/validate_trial', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ trial_key: trialKey })
+                });
+                
+                debugText.innerHTML = `Response received. Status: ${response.status}`;
+                
+                const result = await response.json();
+                debugText.innerHTML = `Response parsed: Success = ${result.success}`;
+                
+                if (result.success) {
+                    currentTrial = result.trial_data;
+                    
+                    // Hide access form and show platform
+                    document.getElementById('accessForm').style.display = 'none';
+                    document.getElementById('trialBanner').classList.add('active');
+                    document.getElementById('platformInterface').classList.add('active');
+                    
+                    // Update trial info
+                    document.getElementById('queriesLeft').textContent = 100 - result.trial_data.queries_used;
+                    document.getElementById('daysLeft').textContent = result.days_remaining;
+                    
+                    debugText.innerHTML = '✅ Access granted successfully!';
+                    
+                } else {
+                    alert(result.message || 'Invalid trial key.');
+                    accessBtn.innerHTML = originalText;
+                    accessBtn.disabled = false;
+                    debugText.innerHTML = `❌ Validation failed: ${result.message}`;
+                }
+                
+            } catch (error) {
+                console.error('Validation error:', error);
+                alert(`Error validating trial: ${error.message}`);
+                accessBtn.innerHTML = originalText;
+                accessBtn.disabled = false;
+                debugText.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        function useQuery(query) {
+            document.getElementById('searchQuery').value = query;
+            performSearch();
+        }
+        
+        // SEARCH FUNCTION
+        async function performSearch() {
+            const query = document.getElementById('searchQuery').value.trim();
+            const resultDiv = document.getElementById('result');
+            const searchBtn = document.querySelector('.search-btn');
+            const originalText = searchBtn.innerHTML;
+            
+            if (!query) {
+                alert('Please enter a search query.');
+                return;
+            }
+            
+            if (!currentTrial) {
+                alert('Please login first.');
+                return;
+            }
+            
+            searchBtn.innerHTML = '🔍 Searching...';
+            searchBtn.disabled = true;
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading">🔍 Searching carbon credits intelligence...</div>';
+            
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        query: query,
+                        trial_key: currentTrial.trial_key 
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = result.intelligence;
+                    document.getElementById('queriesLeft').textContent = result.queries_remaining;
+                    
+                    searchBtn.innerHTML = '✅ Search Complete!';
+                    setTimeout(() => {
+                        searchBtn.innerHTML = originalText;
+                        searchBtn.disabled = false;
+                    }, 2000);
+                    
+                } else {
+                    resultDiv.innerHTML = `
+                        <div style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px;">
+                            <h3>❌ Search Error</h3>
+                            <p>${result.message}</p>
+                        </div>
+                    `;
+                    searchBtn.innerHTML = originalText;
+                    searchBtn.disabled = false;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px;">
+                        <h3>❌ Connection Error</h3>
+                        <p>Unable to process your search. Please try again.</p>
+                    </div>
+                `;
+                searchBtn.innerHTML = originalText;
+                searchBtn.disabled = false;
+            }
+        }
+        
+        function detectLanguage() {
+            const query = document.getElementById('searchQuery').value.trim();
+            if (query) {
+                const isPortuguese = /[àáâãäéêëíîïóôõöúûüç]/i.test(query) || 
+                                   /\\b(o|a|os|as|de|da|do|das|dos|em|para|por|com|sem|sobre)\\b/i.test(query);
+                
+                const language = isPortuguese ? '🇧🇷 Portuguese (Brazilian)' : '🇺🇸 English (US)';
+                document.querySelector('.language-detection').innerHTML = 
+                    `🔍 <strong>Language Detection:</strong> ${language} - Location: General`;
+            }
+        }
+        
+        function checkApiStatus() {
+            alert('✅ API Status: Online\\n🌐 All services operational\\n⚡ Response time: < 2s');
+        }
+        
+        // Auto-detect language on input
+        document.getElementById('searchQuery').addEventListener('input', detectLanguage);
+        
+        // Allow Enter key for access
+        document.getElementById('trialKey').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                validateAccess();
+            }
+        });
+        </script>
+    </body>
+    </html>

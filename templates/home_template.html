@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🌱 Plataforma Inteligente de Créditos de Carbono</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                background: #f5f7fa;
+                color: #333;
+            }
+            .header {
+                background: linear-gradient(135deg, #4a7c59 0%, #6b8e23 100%);
+                color: white;
+                padding: 20px 0;
+                text-align: center;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            }
+            .header h1 {
+                font-size: 2.2em;
+                font-weight: 700;
+                margin-bottom: 5px;
+            }
+            .header p {
+                font-size: 1.1em;
+                opacity: 0.9;
+            }
+            .container {
+                max-width: 1000px;
+                margin: 0 auto;
+                padding: 30px 20px;
+            }
+            
+            /* TRIAL CONVERSION BANNER */
+            .trial-banner {
+                background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+                color: white;
+                padding: 20px 25px;
+                border-radius: 15px;
+                margin-bottom: 30px;
+                text-align: center;
+                box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+                animation: pulse 3s infinite;
+                position: relative;
+                overflow: hidden;
+            }
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.02); }
+                100% { transform: scale(1); }
+            }
+            .trial-banner::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+                animation: shine 4s infinite;
+            }
+            @keyframes shine {
+                0% { transform: translateX(-100%) translateY(-100%); }
+                100% { transform: translateX(100%) translateY(100%); }
+            }
+            .trial-banner h3 {
+                font-size: 1.5em;
+                margin-bottom: 10px;
+                position: relative;
+                z-index: 2;
+            }
+            .trial-banner p {
+                margin-bottom: 15px;
+                font-size: 1.1em;
+                position: relative;
+                z-index: 2;
+            }
+            .trial-btn {
+                background: white;
+                color: #ff6b6b;
+                padding: 15px 30px;
+                border: none;
+                border-radius: 30px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+                position: relative;
+                z-index: 2;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            }
+            .trial-btn:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+                background: #f8f9fa;
+            }
+            
+            /* SEARCH INTERFACE */
+            .search-container {
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+                margin-bottom: 30px;
+                position: relative;
+            }
+            .language-detection {
+                background: #fff3cd;
+                padding: 12px 18px;
+                border-radius: 10px;
+                margin-bottom: 20px;
+                border: 1px solid #ffeaa7;
+                font-size: 14px;
+            }
+            .search-box {
+                width: 100%;
+                padding: 18px 22px;
+                border: 2px solid #e0e0e0;
+                border-radius: 12px;
+                font-size: 16px;
+                margin-bottom: 20px;
+                transition: all 0.3s ease;
+                resize: vertical;
+                min-height: 80px;
+                font-family: inherit;
+            }
+            .search-box:focus {
+                border-color: #4a7c59;
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(74, 124, 89, 0.1);
+            }
+            .search-buttons {
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .search-btn {
+                background: linear-gradient(135deg, #4a7c59, #6b8e23);
+                color: white;
+                padding: 12px 25px;
+                border: none;
+                border-radius: 25px;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+                box-shadow: 0 3px 10px rgba(74, 124, 89, 0.3);
+            }
+            .search-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(74, 124, 89, 0.4);
+            }
+            .detect-btn {
+                background: linear-gradient(135deg, #2196F3, #1976D2);
+                color: white;
+                padding: 12px 25px;
+                border: none;
+                border-radius: 25px;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+                box-shadow: 0 3px 10px rgba(33, 150, 243, 0.3);
+            }
+            .detect-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+            }
+            .status-btn {
+                background: linear-gradient(135deg, #FF9800, #F57C00);
+                color: white;
+                padding: 12px 25px;
+                border: none;
+                border-radius: 25px;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+                box-shadow: 0 3px 10px rgba(255, 152, 0, 0.3);
+            }
+            .status-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+            }
+            
+            /* DEMO OVERLAY */
+            .demo-overlay {
+                position: absolute;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(255,255,255,0.95);
+                display: none;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                border-radius: 15px;
+                backdrop-filter: blur(8px);
+                z-index: 100;
+            }
+            .demo-message {
+                text-align: center;
+                padding: 40px;
+                max-width: 400px;
+            }
+            .demo-message h3 {
+                color: #4a7c59;
+                margin-bottom: 15px;
+                font-size: 1.8em;
+            }
+            .demo-message p {
+                color: #666;
+                margin-bottom: 25px;
+                line-height: 1.6;
+                font-size: 1.1em;
+            }
+            
+            /* EXAMPLES SECTION */
+            .examples {
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            }
+            .examples h3 {
+                color: #4a7c59;
+                margin-bottom: 20px;
+                font-size: 1.4em;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .example-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 15px;
+            }
+            .example-item {
+                padding: 15px 20px;
+                background: #f8f9fa;
+                border-radius: 10px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                border-left: 4px solid transparent;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .example-item:hover {
+                background: #e8f5e8;
+                border-left-color: #4a7c59;
+                transform: translateX(8px);
+                box-shadow: 0 4px 12px rgba(74, 124, 89, 0.2);
+            }
+            .example-flag {
+                font-size: 1.2em;
+                min-width: 30px;
+            }
+            .example-text {
+                flex: 1;
+                font-size: 14px;
+                color: #555;
+            }
+            
+            /* RESPONSIVE */
+            @media (max-width: 768px) {
+                .container { padding: 20px 15px; }
+                .header h1 { font-size: 1.8em; }
+                .header p { font-size: 1em; }
+                .trial-banner { padding: 18px 20px; }
+                .trial-banner h3 { font-size: 1.3em; }
+                .search-container { padding: 25px 20px; }
+                .search-buttons { flex-direction: column; }
+                .search-btn, .detect-btn, .status-btn { width: 100%; margin-bottom: 10px; }
+                .example-grid { grid-template-columns: 1fr; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>🌱 Plataforma Inteligente de Créditos de Carbono</h1>
+            <p>🇧🇷🇺🇸 Inteligência de Mercado Bilingue Potencializada por IA</p>
+        </div>
+        
+        <div class="container">
+            <!-- TRIAL CONVERSION BANNER -->
+            <div class="trial-banner">
+                <h3>🔥 Acesso Total à Plataforma!</h3>
+                <p>Obtenha 14 dias de teste gratuito • 100 pesquisas premium • Sem necessidade de cartão de crédito</p>
+                <a href="/register-trial" class="trial-btn">
+                    🚀 Comece o Seu Teste Gratuito Agora
+                </a>
+            </div>
+            
+            <!-- SEARCH INTERFACE -->
+            <div class="search-container">
+                <div class="language-detection">
+                    🔍 <strong>Language Detection:</strong> 🇧🇷 Portuguese (Brazilian) - Location: General
+                </div>
+                
+                <textarea id="searchQuery" class="search-box" 
+                          placeholder="Como funciona o mercado voluntário de carbono?"></textarea>
+                
+                <div class="search-buttons">
+                    <button onclick="showTrialMessage()" class="search-btn">
+                        🔍 Buscar Inteligência de Carbono
+                    </button>
+                    <button onclick="showTrialMessage()" class="detect-btn">
+                        🌐 Detectar Idioma
+                    </button>
+                    <button onclick="showTrialMessage()" class="status-btn">
+                        ⚡ Verificar Status da API
+                    </button>
+                </div>
+                
+                <!-- DEMO OVERLAY -->
+                <div class="demo-overlay" id="demoOverlay">
+                    <div class="demo-message">
+                        <h3>🔐 Premium Feature</h3>
+                        <p>This intelligent search requires a <strong>free trial account</strong>.<br><br>
+                        Get instant access to our Brazilian carbon credits intelligence platform.</p>
+                        <a href="/register-trial" class="trial-btn">
+                            ✨ Get Free Trial Access
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- EXAMPLES SECTION -->
+            <div class="examples">
+                <h3>💡 Example Queries / Exemplos de Consultas</h3>
+                
+                <div class="example-grid">
+                    <div class="example-item" onclick="showTrialMessage()">
+                        <span class="example-flag">🇺🇸</span>
+                        <span class="example-text">Where can I buy carbon credits in Brazil?</span>
+                    </div>
+                    <div class="example-item" onclick="showTrialMessage()">
+                        <span class="example-flag">🇧🇷</span>
+                        <span class="example-text">Onde posso comprar créditos de carbono no Brasil?</span>
+                    </div>
+                    <div class="example-item" onclick="showTrialMessage()">
+                        <span class="example-flag">🇺🇸</span>
+                        <span class="example-text">What are the current carbon credit prices?</span>
+                    </div>
+                    <div class="example-item" onclick="showTrialMessage()">
+                        <span class="example-flag">🇧🇷</span>
+                        <span class="example-text">Qual é o preço atual dos créditos de carbono?</span>
+                    </div>
+                    <div class="example-item" onclick="showTrialMessage()">
+                        <span class="example-flag">🇺🇸</span>
+                        <span class="example-text">How does carbon trading work in Brazil?</span>
+                    </div>
+                    <div class="example-item" onclick="showTrialMessage()">
+                        <span class="example-flag">🇧🇷</span>
+                        <span class="example-text">Como funciona o mercado de carbono brasileiro?</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+        function showTrialMessage() {
+            const overlay = document.getElementById('demoOverlay');
+            overlay.style.display = 'flex';
+            
+            // Auto-hide after 6 seconds
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 6000);
+        }
+        
+        // Add some interaction to the search box
+        document.getElementById('searchQuery').addEventListener('focus', function() {
+            if (!this.value) {
+                showTrialMessage();
+            }
+        });
+        </script>
+    </body>
+    </html>

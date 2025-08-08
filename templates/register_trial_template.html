@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🌱 Free Trial Registration</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            .registration-container {
+                background: white;
+                padding: 40px;
+                border-radius: 20px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+                max-width: 450px;
+                width: 100%;
+                text-align: center;
+            }
+            .logo {
+                font-size: 3em;
+                margin-bottom: 10px;
+            }
+            h1 {
+                color: #4a7c59;
+                margin-bottom: 10px;
+                font-size: 1.8em;
+            }
+            .subtitle {
+                color: #666;
+                margin-bottom: 30px;
+                line-height: 1.5;
+            }
+            .form-group {
+                margin-bottom: 20px;
+                text-align: left;
+            }
+            label {
+                display: block;
+                margin-bottom: 8px;
+                color: #333;
+                font-weight: 600;
+            }
+            input[type="text"], input[type="email"], select {
+                width: 100%;
+                padding: 15px 18px;
+                border: 2px solid #e0e0e0;
+                border-radius: 10px;
+                font-size: 16px;
+                transition: all 0.3s ease;
+                font-family: inherit;
+            }
+            input[type="text"]:focus, input[type="email"]:focus, select:focus {
+                border-color: #4a7c59;
+                outline: none;
+                box-shadow: 0 0 0 3px rgba(74, 124, 89, 0.1);
+            }
+            .register-btn {
+                width: 100%;
+                background: linear-gradient(135deg, #4a7c59, #6b8e23);
+                color: white;
+                padding: 18px;
+                border: none;
+                border-radius: 12px;
+                cursor: pointer;
+                font-size: 18px;
+                font-weight: 600;
+                transition: all 0.3s ease;
+                margin-top: 20px;
+                box-shadow: 0 4px 15px rgba(74, 124, 89, 0.3);
+            }
+            .register-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(74, 124, 89, 0.4);
+            }
+            .register-btn:disabled {
+                background: #ccc;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+            .benefits {
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 10px;
+                margin: 20px 0;
+                text-align: left;
+            }
+            .benefits h3 {
+                color: #4a7c59;
+                margin-bottom: 15px;
+                text-align: center;
+            }
+            .benefits ul {
+                list-style: none;
+                padding: 0;
+            }
+            .benefits li {
+                padding: 8px 0;
+                border-bottom: 1px solid #eee;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .benefits li:last-child {
+                border-bottom: none;
+            }
+            .check-icon {
+                color: #4CAF50;
+                font-weight: bold;
+            }
+            .back-link {
+                margin-top: 20px;
+                display: block;
+                color: #666;
+                text-decoration: none;
+                font-size: 14px;
+            }
+            .back-link:hover {
+                color: #4a7c59;
+            }
+            
+            /* SUCCESS MESSAGE WITH TRIAL KEY */
+            .success-message {
+                background: #d4edda;
+                color: #155724;
+                padding: 25px;
+                border-radius: 15px;
+                margin: 20px 0;
+                border: 1px solid #c3e6cb;
+                display: none;
+                text-align: center;
+            }
+            .trial-key-display {
+                background: #fff;
+                padding: 20px;
+                border-radius: 10px;
+                margin: 15px 0;
+                border: 2px dashed #4a7c59;
+            }
+            .trial-key-code {
+                font-family: 'Courier New', monospace;
+                font-size: 1.5em;
+                font-weight: bold;
+                color: #4a7c59;
+                background: #f8f9fa;
+                padding: 10px 15px;
+                border-radius: 8px;
+                letter-spacing: 2px;
+                margin: 10px 0;
+                border: 1px solid #e0e0e0;
+            }
+            .copy-button {
+                background: #4a7c59;
+                color: white;
+                padding: 8px 15px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 12px;
+                margin: 10px 5px;
+                transition: all 0.3s ease;
+            }
+            .copy-button:hover {
+                background: #3a6249;
+            }
+            .access-button {
+                background: linear-gradient(135deg, #4a7c59, #6b8e23);
+                color: white;
+                padding: 15px 30px;
+                border: none;
+                border-radius: 10px;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: 600;
+                margin: 15px 10px;
+                text-decoration: none;
+                display: inline-block;
+                transition: all 0.3s ease;
+                box-shadow: 0 4px 15px rgba(74, 124, 89, 0.3);
+            }
+            .access-button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 25px rgba(74, 124, 89, 0.4);
+            }
+            
+            .error-message {
+                background: #f8d7da;
+                color: #721c24;
+                padding: 20px;
+                border-radius: 10px;
+                margin: 20px 0;
+                border: 1px solid #f5c6cb;
+                display: none;
+            }
+            @media (max-width: 480px) {
+                .registration-container {
+                    padding: 30px 25px;
+                    margin: 10px;
+                }
+                h1 { font-size: 1.5em; }
+                .logo { font-size: 2.5em; }
+                .trial-key-code { font-size: 1.2em; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="registration-container">
+            <div class="logo">🌱</div>
+            <h1>Comece o Seu Teste Gratuito</h1>
+            <p class="subtitle">Obtenha 14 dias de acesso total à Plataforma Inteligente de Créditos de Carbono</p>
+            
+            <div class="benefits">
+                <h3>✨ What You Get</h3>
+                <ul>
+                    <li><span class="check-icon">✅</span> 100 premium AI searches</li>
+                    <li><span class="check-icon">✅</span> Real-time market data</li>
+                    <li><span class="check-icon">✅</span> Bilingual support (PT/EN)</li>
+                    <li><span class="check-icon">✅</span> Expert analysis & insights</li>
+                    <li><span class="check-icon">✅</span> No credit card required</li>
+                </ul>
+            </div>
+            
+            <!-- REGISTRATION FORM -->
+            <form id="registrationForm">
+                <div class="form-group">
+                    <label for="fullName">Full Name *</label>
+                    <input type="text" id="fullName" name="fullName" required 
+                           placeholder="Enter your full name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required 
+                           placeholder="Enter your email address">
+                </div>
+                
+                <div class="form-group">
+                    <label for="company">Company/Organization</label>
+                    <input type="text" id="company" name="company" 
+                           placeholder="Enter your company name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="role">Your Role</label>
+                    <select id="role" name="role">
+                        <option value="">Select your role...</option>
+                        <option value="sustainability-manager">Sustainability Manager</option>
+                        <option value="ceo">CEO/Executive</option>
+                        <option value="consultant">Consultant</option>
+                        <option value="investor">Investor</option>
+                        <option value="developer">Project Developer</option>
+                        <option value="researcher">Researcher/Academic</option>
+                        <option value="government">Government</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="country">Country</label>
+                    <select id="country" name="country">
+                        <option value="">Select your country...</option>
+                        <option value="brazil">🇧🇷 Brazil</option>
+                        <option value="usa">🇺🇸 United States</option>
+                        <option value="canada">🇨🇦 Canada</option>
+                        <option value="uk">🇬🇧 United Kingdom</option>
+                        <option value="germany">🇩🇪 Germany</option>
+                        <option value="france">🇫🇷 France</option>
+                        <option value="spain">🇪🇸 Spain</option>
+                        <option value="italy">🇮🇹 Italy</option>
+                        <option value="netherlands">🇳🇱 Netherlands</option>
+                        <option value="australia">🇦🇺 Australia</option>
+                        <option value="japan">🇯🇵 Japan</option>
+                        <option value="singapore">🇸🇬 Singapore</option>
+                        <option value="other">🌍 Other</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="register-btn" id="registerBtn">
+                    🚀 Create Free Trial Account
+                </button>
+            </form>
+            
+            <!-- SUCCESS MESSAGE WITH TRIAL KEY -->
+            <div class="success-message" id="successMessage">
+                <h3>🎉 Registration Successful!</h3>
+                <p><strong>Your Trial Access Key:</strong></p>
+                
+                <div class="trial-key-display">
+                    <div class="trial-key-code" id="trialKeyCode">CARBON-XXXXXXXXXX</div>
+                    <button onclick="copyTrialKey()" class="copy-button">📋 Copy Key</button>
+                    <button onclick="showInstructions()" class="copy-button" style="background: #2196F3;">📖 Instructions</button>
+                </div>
+                
+                <p style="margin: 15px 0; color: #155724; font-size: 14px;">
+                    <strong>⚠️ IMPORTANT:</strong> Save this key! You'll need it to access the platform.
+                </p>
+                
+                <a href="/trial" class="access-button">
+                    🔓 Access Platform Now
+                </a>
+            </div>
+            
+            <div class="error-message" id="errorMessage">
+                <strong>❌ Registration Error</strong><br>
+                <span id="errorText">Please check your information and try again.</span>
+            </div>
+            
+            <a href="/" class="back-link">← Back to Platform</a>
+        </div>
+        
+        <script>
+        let currentTrialKey = '';
+        
+        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            const registerBtn = document.getElementById('registerBtn');
+            const successMsg = document.getElementById('successMessage');
+            const errorMsg = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            
+            // Validation
+            if (!data.fullName || !data.email) {
+                errorText.textContent = 'Please fill in all required fields.';
+                errorMsg.style.display = 'block';
+                successMsg.style.display = 'none';
+                return;
+            }
+            
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(data.email)) {
+                errorText.textContent = 'Please enter a valid email address.';
+                errorMsg.style.display = 'block';
+                successMsg.style.display = 'none';
+                return;
+            }
+            
+            registerBtn.innerHTML = '⏳ Creating Account...';
+            registerBtn.disabled = true;
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/register-trial', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Store trial key
+                    currentTrialKey = result.trial_key;
+                    
+                    // Display trial key
+                    document.getElementById('trialKeyCode').textContent = result.trial_key;
+                    
+                    // Show success message and hide form
+                    successMsg.style.display = 'block';
+                    this.style.display = 'none';
+                    
+                    // Store in localStorage for convenience
+                    localStorage.setItem('carbon_trial_key', result.trial_key);
+                    
+                } else {
+                    errorText.textContent = result.message || 'Registration failed. Please try again.';
+                    errorMsg.style.display = 'block';
+                    registerBtn.innerHTML = '🚀 Create Free Trial Account';
+                    registerBtn.disabled = false;
+                }
+                
+            } catch (error) {
+                errorText.textContent = 'Network error. Please check your connection and try again.';
+                errorMsg.style.display = 'block';
+                registerBtn.innerHTML = '🚀 Create Free Trial Account';
+                registerBtn.disabled = false;
+            }
+        });
+        
+        function copyTrialKey() {
+            const trialKey = document.getElementById('trialKeyCode').textContent;
+            
+            // Try modern clipboard API first
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(trialKey).then(() => {
+                    alert('✅ Trial key copied to clipboard!');
+                }).catch(() => {
+                    fallbackCopyTextToClipboard(trialKey);
+                });
+            } else {
+                fallbackCopyTextToClipboard(trialKey);
+            }
+        }
+        
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                document.execCommand('copy');
+                alert('✅ Trial key copied to clipboard!');
+            } catch (err) {
+                alert('❌ Could not copy. Please manually copy: ' + text);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+        
+        function showInstructions() {
+            alert(`📖 HOW TO ACCESS THE PLATFORM:
+
+1️⃣ Copy your trial key: ${currentTrialKey}
+
+2️⃣ Click "Access Platform Now" or go to /trial
+
+3️⃣ Paste your trial key when prompted
+
+4️⃣ Start searching carbon intelligence!
+
+✅ Your key is also saved in your browser for convenience.`);
+        }
+        </script>
+    </body>
+    </html>
