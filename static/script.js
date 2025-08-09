@@ -1,6 +1,12 @@
 function toggleLanguage() {
     const en = document.getElementById("english");
     const pt = document.getElementById("portuguese");
-    en.style.display = en.style.display === "none" ? "block" : "none";
-    pt.style.display = pt.style.display === "none" ? "block" : "none";
+
+    if (en.style.display === "none") {
+        en.style.display = "block";
+        pt.style.display = "none";
+    } else {
+        en.style.display = "none";
+        pt.style.display = "block";
+    }
 }
