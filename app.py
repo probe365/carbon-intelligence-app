@@ -378,7 +378,7 @@ def admin_dashboard():
                 <td style="color: {{ 'red' if trial.status == 'expired' else 'green' }}">{{ trial.status }}</td>
             </tr>
             {% endfor %}
-            <a href="{{ url_for('export_csv') }}">Exportar CSV</a>
+           
             <a href="{{ url_for('export_xlsx') }}">Exportar XLSX</a>
 
 
