@@ -26,9 +26,11 @@ jobs:
 
     - name: Rodar testes
       run: |
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
         pytest
 
     - name: Rodar testes com cobertura
       run: |
         pip install pytest-cov
-        pytest --cov=nome_do_seu_pacote
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+        pytest --cov=.
