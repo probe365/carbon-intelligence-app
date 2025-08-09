@@ -24,7 +24,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    #- name: Rodar testes
-     # run: |
-      #  pytest
+    - name: Rodar testes
+      run: |
+        pytest
 
+    - name: Rodar testes com cobertura
+      run: |
+        pip install pytest-cov
+        pytest --cov=nome_do_seu_pacote
