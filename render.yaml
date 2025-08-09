@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: carbon-intelligence-api
+    env: python
+    repo: https://github.com/probe365/carbon-intelligence-app.git
+    branch: master
+    buildCommand: ""
+    startCommand: "python app.py"
+    autoDeploy: true
