@@ -17,7 +17,8 @@ jobs:
       - name: Configurar Java
         uses: actions/setup-java@v3
         with:
-          java-version: '17'  # ou a versão que você estiver usando
+          distribution: 'temurin'
+          java-version: '17'
 
       - name: Compilar projeto
         run: |
