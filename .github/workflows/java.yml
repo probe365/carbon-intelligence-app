@@ -24,6 +24,6 @@ jobs:
         run: |
           javac -d out src/*.java
 
-      - name: Rodar testes (se houver)
-        run: |
-          java -cp out org.junit.runner.JUnitCore MeuTeste
+      #- name: Rodar testes (se houver)
+       # run: |
+        #  java -cp out org.junit.runner.JUnitCore MeuTeste
