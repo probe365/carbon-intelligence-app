@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Painel de Trials</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .expired { background-color: #ffe6e6; }
+        .active { background-color: #e6ffe6; }
+    </style>
+</head>
+<body>
+    <h1>Painel de Trials Registrados</h1>
+    <table id="trials-table">
+        <thead>
+            <tr>
+                <th>Trial Key</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Empresa</th>
+                <th>País</th>
+                <th>Início</th>
+                <th>Expira</th>
+                <th>Consultas</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+    async function carregarTrials() {
+        try {
+            const res = await fetch('/admin/trials');
+            const data = await res.json();
+            const tbody = document.querySelector('#trials-table tbody');
+            const now = new Date();
+
+            data.trials.forEach(trial => {
+                const startDate = new Date(trial.registration_date);
+                const endDate = new Date(startDate);
+                endDate.setDate(startDate.getDate() + 7); // exemplo: trial de 7 dias
+
+                const expired = endDate < now;
+                const row = document.createElement('tr');
+                row.className = expired ? 'expired' : 'active';
+
+                row.innerHTML = `
+                    <td>${trial.trial_key}</td>
+                    <td>${trial.full_name}</td>
+                    <td>${trial.email}</td>
+                    <td>${trial.company}</td>
+                    <td>${trial.country}</td>
+                    <td>${trial.registration_date.slice(0,10)}</td>
+                    <td>${endDate.toISOString().slice(0,10)}</td>
+                    <td>${trial.queries_used}/${trial.queries_limit}</td>
+                    <td>${trial.status}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (err) {
+            console.error("Erro ao carregar trials:", err);
+        }
+    }
+
+    carregarTrials();
+</script>
+
+</body>
+</html>

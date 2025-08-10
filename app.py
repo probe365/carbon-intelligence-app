@@ -307,6 +307,13 @@ def admin_trials():
         print(f"Erro em /admin/trials: {e}")
         return jsonify({"success": False, "message": "Erro ao listar trials."}), 500
 
+@app.route('/admin/painel')
+def admin_painel():
+    if not session.get('logado'):
+        return redirect(url_for('login'))
+    return render_template("admin_trials_template.html")
+
+
 
 @app.route('/debug/search-test', methods=['GET'])
 def debug_search_test():
