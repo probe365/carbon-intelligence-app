@@ -27,6 +27,8 @@ from responses import (
     generate_fallback_response
 )
 
+from flask_cors import CORS
+
 from openpyxl import Workbook
 
 # 🤖 Agente bilíngue
@@ -42,6 +44,8 @@ load_dotenv()
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "default-secret-key")
 app.config['EXPLAIN_TEMPLATE_LOADING'] = True
+
+CORS(app, supports_credentials=True)
 
 
 
@@ -274,17 +278,17 @@ def api_trial_status():
         if not trial_data:
             return jsonify({"success": False, "message": "Trial não encontrado."}), 404
 
-        end_date = datetime.fromisoformat(trial['end_date'])
+        end_date = datetime.fromisoformat(trial_data['end_date'])
         days_remaining = max(0, (end_date - datetime.now()).days)
 
         return jsonify({
             "success": True,
-            "status": trial.get('status', 'active'),
-            "queries_used": trial['queries_used'],
-            "queries_remaining": trial['queries_limit'] - trial['queries_used'],
+            "status": trial_data.get('status', 'active'),
+            "queries_used": trial_data['queries_used'],
+            "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
             "days_remaining": days_remaining,
-            "email": trial.get('email'),
-            "full_name": trial.get('full_name')
+            "email": trial_data.get('email'),
+            "full_name": trial_data.get('full_name')
         })
 
     except Exception as e:
