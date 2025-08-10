@@ -199,7 +199,6 @@ from responses import format_agent_html, generate_fallback_response
 
 @app.route('/search', methods=['POST'])
 def search():
-    """🔍 Consulta inteligente com agente bilíngue + fallback estático"""
     try:
         data = request.get_json()
         query = data.get('query', '').strip()
@@ -209,17 +208,26 @@ def search():
             return jsonify({"success": False, "message": "Query e trial key são obrigatórios."}), 400
 
         trial_data = get_trial_by_key(trial_key)
-        if not trial_data:
-            return jsonify({"success": False, "message": "Trial inválido."}), 401
+        # Função utilitária para validar trial
+        def is_trial_valid(trial_data):
+            if not trial_data:
+                return False, "Trial key inválido."
+            end_date = datetime.fromisoformat(trial_data['end_date'])
+            days_remaining = (end_date - datetime.now()).days
+            if days_remaining < 0:
+                return False, "Trial expirado. Faça upgrade para continuar."
+            if trial_data.get('queries_used', 0) >= trial_data.get('queries_limit', 100):
+                return False, "Limite de consultas atingido. Faça upgrade para continuar."
+            return True, "Trial válido"
 
-        if trial_data['queries_used'] >= trial_data['queries_limit']:
-            return jsonify({"success": False, "message": "Limite de consultas atingido."}), 403
+        is_valid, validation_msg = is_trial_valid(trial_data)
 
+        if not is_valid:
+            return jsonify({"success": False, "message": validation_msg}), 401
+
+        # ✅ Atualiza contador de uso
         increment_queries_used(trial_key)
-
-        increment_queries_used(trial_key)
-        trial_data = get_trial_by_key(trial_key)  # 🔄 Recarrega dados atualizados
-
+        trial_data = get_trial_by_key(trial_key)  # Recarrega dados atualizados
 
         # 🤖 Chamada ao agente
         try:
@@ -235,7 +243,7 @@ def search():
                 return jsonify({
                     "success": True,
                     "intelligence": response_html,
-                    "queries_remaining": trial_data['queries_limit'] - (trial_data['queries_used'] + 1),
+                    "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
                     "language_detected": language_name,
                     "sources_count": search_data['total_found']
                 })
@@ -246,7 +254,7 @@ def search():
             return jsonify({
                 "success": True,
                 "intelligence": response_html,
-                "queries_remaining": trial_data['queries_limit'] - (trial_data['queries_used'] + 1),
+                "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
                 "language_detected": "Portuguese (Brazilian)"
             })
 
@@ -255,7 +263,6 @@ def search():
         print(traceback.format_exc())
         return jsonify({"success": False, "message": "Erro interno no servidor."}), 500
 
-
 @app.route('/api/trial-status', methods=['POST'])
 def api_trial_status():
     """🔍 Consulta status de um trial via chave"""
@@ -263,8 +270,8 @@ def api_trial_status():
         data = request.get_json()
         trial_key = data.get('trial_key', '').strip().upper()
 
-        trial = get_trial_by_key(trial_key)
-        if not trial:
+        trial_data = get_trial_by_key(trial_key)
+        if not trial_data:
             return jsonify({"success": False, "message": "Trial não encontrado."}), 404
 
         end_date = datetime.fromisoformat(trial['end_date'])
