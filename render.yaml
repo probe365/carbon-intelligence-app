@@ -4,6 +4,21 @@ services:
     env: python
     repo: https://github.com/probe365/carbon-intelligence-app.git
     branch: master
-    buildCommand: ""
-    startCommand: "python app.py"
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -w ${WEB_CONCURRENCY:-2} -k gthread --threads ${GUNICORN_THREADS:-4} -b 0.0.0.0:$PORT app:app --timeout ${GUNICORN_TIMEOUT:-120}"
     autoDeploy: true
+    envVars:
+      - key: DB_PATH
+        value: /var/data/trials.db
+      - key: CRON_SECRET
+        generateValue: true
+      - key: WEB_CONCURRENCY
+        value: 2
+      - key: GUNICORN_THREADS
+        value: 4
+      - key: GUNICORN_TIMEOUT
+        value: 120
+    disks:
+      - name: data
+        mountPath: /var/data
+        sizeGB: 1

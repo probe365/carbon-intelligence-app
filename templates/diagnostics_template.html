@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Diagnóstico da Aplicação</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { margin-bottom: 6px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .card { border: 1px solid #ccc; border-radius: 8px; padding: 12px; background: #fafafa; }
+    .mono { font-family: Consolas, monospace; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 4px 6px; vertical-align: top; }
+    td.key { width: 36%; color: #555; }
+    .ok { color: #0a7a00; }
+    .warn { color: #b30000; }
+  </style>
+</head>
+<body>
+  <h1>Diagnóstico</h1>
+  <p>Estado da persistência do banco e variáveis de ambiente. Requer login de admin.</p>
+
+  <div id="content">Carregando...</div>
+
+  <script>
+    async function loadDiag() {
+      const res = await fetch('/admin/diagnostics');
+      if (!res.ok) {
+        document.getElementById('content').textContent = 'Falha ao carregar diagnóstico.';
+        return;
+      }
+      const d = await res.json();
+      const fmtBytes = n => (n/1024/1024).toFixed(2) + ' MB';
+
+      document.getElementById('content').innerHTML = `
+        <div class="grid">
+          <div class="card">
+            <h3>Banco de Dados</h3>
+            <table>
+              <tr><td class="key">Caminho</td><td class="mono">${d.db.path}</td></tr>
+              <tr><td class="key">Existe</td><td class="${d.db.exists ? 'ok' : 'warn'}">${d.db.exists}</td></tr>
+              <tr><td class="key">Tamanho</td><td>${fmtBytes(d.db.size_bytes || 0)}</td></tr>
+              <tr><td class="key">Última modificação</td><td>${d.db.last_modified || '—'}</td></tr>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3>Disco</h3>
+            <table>
+              <tr><td class="key">Diretório</td><td class="mono">${(d.disk && d.disk.dir) || '—'}</td></tr>
+              <tr><td class="key">Total</td><td>${d.disk && d.disk.total ? fmtBytes(d.disk.total) : '—'}</td></tr>
+              <tr><td class="key">Usado</td><td>${d.disk && d.disk.used ? fmtBytes(d.disk.used) : '—'}</td></tr>
+              <tr><td class="key">Livre</td><td>${d.disk && d.disk.free ? fmtBytes(d.disk.free) : '—'}</td></tr>
+              ${d.disk && d.disk.error ? `<tr><td class="key">Erro</td><td class="warn">${d.disk.error}</td></tr>` : ''}
+            </table>
+          </div>
+
+          <div class="card">
+            <h3>Ambiente</h3>
+            <table>
+              <tr><td class="key">DB_PATH</td><td class="mono">${(d.env && d.env.DB_PATH) || '—'}</td></tr>
+              <tr><td class="key">PORT</td><td class="mono">${(d.env && d.env.PORT) || '—'}</td></tr>
+              <tr><td class="key">FLASK_DEBUG</td><td class="mono">${(d.env && d.env.FLASK_DEBUG) || '—'}</td></tr>
+              <tr><td class="key">Hora do servidor</td><td>${d.server_time}</td></tr>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3>Trials</h3>
+            <table>
+              <tr><td class="key">Total</td><td>${d.counts.total_trials}</td></tr>
+              <tr><td class="key">Ativos</td><td>${d.counts.active_trials}</td></tr>
+              <tr><td class="key">Expirados</td><td>${d.counts.expired_trials}</td></tr>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+    loadDiag();
+  </script>
+</body>
+</html>

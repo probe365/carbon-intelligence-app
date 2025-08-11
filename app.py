@@ -8,7 +8,7 @@ Plataforma Flask para visualização e gestão de créditos de carbono.
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-import os, secrets, hashlib, traceback
+import os, secrets, hashlib, traceback, shutil, sqlite3
 from flask import Response
 from flask import Flask, request, redirect, url_for, session, render_template
 import csv
@@ -157,8 +157,35 @@ def health_check():
         "active_trials": count_trials("active"),
         "server_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         "platform": "Carbon Credits Intelligence",
-        "version": "1.0.0"
+    "version": "1.1.0"
     })
+
+
+@app.route('/health/db', methods=['GET'])
+def health_db():
+    """DB smoke test: ensure SQLite is reachable and table is queryable."""
+    try:
+        path = os.path.abspath(DB_NAME)
+        conn = sqlite3.connect(DB_NAME)
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM trials")
+        total = cur.fetchone()[0]
+        cur.execute("SELECT trial_key FROM trials LIMIT 1")
+        row = cur.fetchone()
+        sample = row[0] if row else None
+        conn.close()
+        return jsonify({
+            "success": True,
+            "db_path": path,
+            "total_trials": total,
+            "sample_trial_key": sample
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "db_path": os.path.abspath(DB_NAME)
+        }), 500
 
 
 
@@ -318,6 +345,56 @@ def admin_painel():
     return render_template("admin_trials_template.html")
 
 
+@app.route('/admin/diagnostics')
+def admin_diagnostics():
+    """🔎 Admin — Diagnóstico de saúde e persistência do banco de dados.
+
+    Mostra caminho do DB, existência, tamanho, data de modificação e uso do disco
+    do diretório onde o DB está. Útil para confirmar persistência no Render.
+    """
+    if not session.get('logado'):
+        return redirect(url_for('login'))
+
+    db_path = DB_NAME
+    db_dir = os.path.dirname(db_path) or '.'
+    exists = os.path.exists(db_path)
+    size = os.path.getsize(db_path) if exists else 0
+    mtime = datetime.fromtimestamp(os.path.getmtime(db_path)).isoformat() if exists else None
+
+    try:
+        usage = shutil.disk_usage(db_dir)
+        disk_info = {
+            "total": usage.total,
+            "used": usage.used,
+            "free": usage.free,
+            "dir": os.path.abspath(db_dir)
+        }
+    except Exception as e:
+        disk_info = {"error": str(e), "dir": os.path.abspath(db_dir)}
+
+    return jsonify({
+        "success": True,
+        "db": {
+            "path": os.path.abspath(db_path),
+            "exists": exists,
+            "size_bytes": size,
+            "last_modified": mtime
+        },
+        "env": {
+            "DB_PATH": os.getenv("DB_PATH"),
+            "PORT": os.getenv("PORT"),
+            "FLASK_DEBUG": os.getenv("FLASK_DEBUG")
+        },
+        "disk": disk_info,
+        "counts": {
+            "total_trials": count_trials(),
+            "active_trials": count_trials("active"),
+            "expired_trials": count_trials("expired")
+        },
+        "server_time": datetime.utcnow().isoformat() + "Z"
+    })
+
+
 
 @app.route('/debug/search-test', methods=['GET'])
 def debug_search_test():
@@ -364,12 +441,24 @@ def admin_dashboard():
             th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
             th { background-color: #eee; }
             tr:nth-child(even) { background-color: #fafafa; }
+            .links { margin: 10px 0 20px; }
+            .links a { margin-right: 16px; }
+            .btn { display: inline-block; padding: 8px 12px; background: #2f7d32; color: #fff; border-radius: 6px; text-decoration: none; }
+            .btn:hover { background: #256428; }
+            .toast { position: fixed; right: 16px; bottom: 16px; background: #333; color: #fff; padding: 10px 12px; border-radius: 6px; display: none; }
         </style>
     </head>
     <body>
         <h1>Admin Dashboard</h1>
         <p><strong>Trials ativos:</strong> {{ active_trials }}</p>
         <p><strong>Trials expirados:</strong> {{ expired_trials }}</p>
+
+        <div class="links">
+            <a href="{{ url_for('export_xlsx') }}">Exportar XLSX</a>
+            <a href="{{ url_for('export_csv') }}">Exportar CSV</a>
+            <a href="{{ url_for('admin_diagnostics_view') }}">Ver Diagnóstico</a>
+            <a href="#" class="btn" onclick="runExpire()">Atualizar Expirados</a>
+        </div>
 
         <table>
             <tr>
@@ -396,11 +485,18 @@ def admin_dashboard():
                 <td style="color: {{ 'red' if trial.status == 'expired' else 'green' }}">{{ trial.status }}</td>
             </tr>
             {% endfor %}
-           
-            <a href="{{ url_for('export_xlsx') }}">Exportar XLSX</a>
-
-
         </table>
+                <div id="toast" class="toast"></div>
+                <script>
+                    async function runExpire(){
+                        const res = await fetch('/admin/run-expire', { method: 'POST' });
+                        const json = await res.json().catch(() => ({success:false}));
+                        const msg = json && json.success ? `Atualizados: ${json.updated}` : 'Falha ao atualizar';
+                        const t = document.getElementById('toast');
+                        t.textContent = msg; t.style.display = 'block';
+                        setTimeout(()=>{ t.style.display = 'none'; location.reload(); }, 1200);
+                    }
+                </script>
        
 
     </body>
@@ -493,21 +589,49 @@ def export_xlsx():
     )
 
 
+@app.route('/admin/diagnostics-view')
+def admin_diagnostics_view():
+    if not session.get('logado'):
+        return redirect(url_for('login'))
+    return render_template('diagnostics_template.html')
+
+
+@app.route('/admin/run-expire', methods=['POST'])
+def admin_run_expire():
+    if not session.get('logado'):
+        return jsonify({"success": False, "message": "Não autorizado"}), 401
+    updated = update_expired_trials()
+    return jsonify({"success": True, "updated": updated})
+
+
+@app.route('/cron/run-expire', methods=['POST'])
+def cron_run_expire():
+    token = request.headers.get('X-CRON-SECRET') or request.args.get('token')
+    expected = os.getenv('CRON_SECRET')
+    if not expected or token != expected:
+        return jsonify({"success": False, "message": "Unauthorized"}), 401
+    updated = update_expired_trials()
+    return jsonify({"success": True, "updated": updated})
+
+
 
 
 if __name__ == '__main__':
+    debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
+    port = int(os.getenv("PORT", "5000"))
+
     print("=" * 50)
     print("🌱 CARBON CREDITS INTELLIGENCE PLATFORM")
     print("=" * 50)
-    print("🔧 DEBUG MODE: ON")
-    print("🌐 Server starting on http://localhost:5000")
+    print(f"🔧 DEBUG MODE: {'ON' if debug_mode else 'OFF'}")
+    print(f"🌐 Server starting on http://0.0.0.0:{port}")
     print("=" * 50)
 
     app.run(
-        debug=True,
+        debug=debug_mode,
         host='0.0.0.0',
-        port=5000,
-        use_reloader=True,
+        port=port,
+        use_reloader=debug_mode,
         threaded=True
     )
 

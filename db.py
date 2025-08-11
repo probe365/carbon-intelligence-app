@@ -1,10 +1,42 @@
 import sqlite3
 import uuid
+import os
+import shutil
 from datetime import datetime
 
-DB_NAME = "trials.db"
+# Choose a persistent path for SQLite when available (e.g., on Render with a mounted disk)
+_env_db_path = os.getenv("DB_PATH")
+if _env_db_path:
+    DB_NAME = _env_db_path
+else:
+    # Default to a file alongside this module for local dev
+    DB_NAME = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trials.db")
+
+# Ensure the directory for the DB exists (no-op if already present)
+_db_dir = os.path.dirname(DB_NAME)
+if _db_dir and not os.path.exists(_db_dir):
+    os.makedirs(_db_dir, exist_ok=True)
+
+
+def _migrate_bundled_db_if_needed():
+    """Copy a bundled trials.db to the persistent DB path on first boot.
+
+    This allows keeping existing local/demo data when switching to a mounted disk
+    (e.g., Render). Only runs if DB_PATH points elsewhere, the target doesn't
+    exist yet, and a bundled file is present.
+    """
+    try:
+        bundled = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trials.db")
+        target = os.path.abspath(DB_NAME)
+        if os.path.abspath(bundled) != target and (not os.path.exists(target)) and os.path.exists(bundled):
+            shutil.copy2(bundled, target)
+            print(f"[DB] Seeded persistent DB from bundled file -> {target}")
+    except Exception as e:
+        print(f"[DB] Migration warning: {e}")
 
 def init_db():
+    # One-time migration before opening the database
+    _migrate_bundled_db_if_needed()
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("""
@@ -191,10 +223,15 @@ def update_expired_trials():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute("""
+    cursor.execute(
+        """
         UPDATE trials
         SET status = 'expired'
         WHERE end_date < ? AND status = 'active'
-    """, (now,))
+        """,
+        (now,),
+    )
+    affected = cursor.rowcount if hasattr(cursor, 'rowcount') else 0
     conn.commit()
     conn.close()
+    return affected

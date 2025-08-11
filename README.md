@@ -1,3 +1,37 @@
+# Carbon Intelligence App
+
+![License](https://img.shields.io/badge/license-MIT-blue)
+## Running locally
+
+1. Install dependencies
+2. Start the app
+
+	python app.py
+## Deploying to Render
+
+This repo includes a `render.yaml` Blueprint. Key settings:
+- Persistent disk at `/var/data` and `DB_PATH=/var/data/trials.db` so SQLite survives autosuspend/restarts.
+- Production server with gunicorn (also available in `Procfile`).
+- `CRON_SECRET` is generated for the protected cron endpoint.
+If you deploy via Dashboard instead of Blueprint:
+
+- Build command: `pip install -r requirements.txt`
+- Start command: `gunicorn -w ${WEB_CONCURRENCY:-2} -k gthread --threads ${GUNICORN_THREADS:-4} -b 0.0.0.0:$PORT app:app --timeout ${GUNICORN_TIMEOUT:-120}`
+- Disk: mount `/var/data` (1GB) and set env: `DB_PATH=/var/data/trials.db`
+- Env: set a stable `SECRET_KEY`
+### Health and Diagnostics
+
+- `/health` — basic service status
+- `/health/db` — checks SQLite connectivity, returns DB path and total trials
+- `/admin/diagnostics-view` — admin-only UI for DB persistence and disk state
+### Admin Utilities
+
+- `/admin/run-expire` (POST) — admin-only endpoint to mark expired trials now
+- `/cron/run-expire` (POST) — token-protected endpoint for cron jobs
+	- Send header `X-CRON-SECRET: <CRON_SECRET>` or use `?token=<CRON_SECRET>`
+### Render Cron Job (optional)
+
+Schedule a daily POST to `https://<service>.onrender.com/cron/run-expire` with header `X-CRON-SECRET` set to the value of `CRON_SECRET`.
 # 🌱 Carbon Intelligence App
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
