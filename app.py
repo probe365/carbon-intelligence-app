@@ -38,6 +38,12 @@ from enhanced_bilingual_agent import BilingualCarbonAgent
 init_db()
 upgrade_db()
 seed_default_trial()
+try:
+    # Warn if running on Render but DB not on mounted disk
+    if os.getenv('RENDER') and '/var/data/' not in os.path.abspath(DB_NAME):
+        print(f"[WARN] DB path {os.path.abspath(DB_NAME)} is not on /var/data persistent disk. Set DB_PATH=/var/data/trials.db and attach a disk to persist trials.")
+except Exception:
+    pass
 
 
 load_dotenv()
