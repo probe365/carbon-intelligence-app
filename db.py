@@ -15,7 +15,18 @@ else:
 # Ensure the directory for the DB exists (no-op if already present)
 _db_dir = os.path.dirname(DB_NAME)
 if _db_dir and not os.path.exists(_db_dir):
-    os.makedirs(_db_dir, exist_ok=True)
+    try:
+        os.makedirs(_db_dir, exist_ok=True)
+    except PermissionError as e:
+        # On platforms like Render, the mount path (e.g. /var/data) must be supplied
+        # via a persistent disk. If the disk is not actually mounted yet (or on
+        # free tier before adding the disk) attempting to create the top-level
+        # directory can raise PermissionError. We log a clear hint instead of
+        # crashing so the service can still start (it will later fail when the
+        # DB is accessed if the path truly is unwritable).
+        print(f"[DB] PermissionError creating '{_db_dir}': {e}. If deploying, attach a disk mounted at {_db_dir} or adjust DB_PATH.")
+    except Exception as e:
+        print(f"[DB] Unexpected error creating '{_db_dir}': {e}")
 
 
 def _migrate_bundled_db_if_needed():
