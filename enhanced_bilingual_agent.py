@@ -11,6 +11,7 @@ from datetime import datetime
 import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 @dataclass
 class SearchResult:
@@ -41,6 +42,11 @@ class BilingualCarbonAgent:
         self.serper_api_key = os.getenv('SERPER_API_KEY')
         
         self.search_priority = ["google", "serper", "tavily", "duckduckgo"]
+        # Global time budget for a search (seconds)
+        try:
+            self.global_timeout = float(os.getenv('SEARCH_TIMEOUT_SECONDS', '9'))
+        except Exception:
+            self.global_timeout = 9.0
         
         if self.google_api_key and self.google_cse_id:
             print("✅ Google Custom Search API configured - Primary search engine")
@@ -156,7 +162,7 @@ Como posso ajudá-lo hoje?""",
                     "include_domains": ["bvrio.org", "b3.com.br", "verra.org", "goldstandard.org"],
                     "max_results": 8
                 },
-                timeout=10
+                timeout=5
             )
             
             if response.status_code == 200:
@@ -200,7 +206,7 @@ Como posso ajudá-lo hoje?""",
                 "https://google.serper.dev/search",
                 headers=headers,
                 json=payload,
-                timeout=10
+                timeout=5
             )
             
             if response.status_code == 200:
@@ -240,7 +246,7 @@ Como posso ajudá-lo hoje?""",
                 'num': 5
             }
             
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(url, params=params, timeout=5)
             
             if response.status_code == 200:
                 data = response.json()
@@ -295,61 +301,66 @@ Como posso ajudá-lo hoje?""",
             return []
     
     def comprehensive_search(self, query: str) -> Dict:
-        """Perform comprehensive search using all available engines with intelligent fallback"""
+        """Perform searches in parallel within a global time budget to avoid timeouts."""
         language = self.detect_language(query)
         is_location_query = self.is_location_specific(query)
-        
         print(f"🔍 Language: {'Portuguese' if language == 'pt-BR' else 'English'}")
         print(f"📍 Location-specific: {'Yes' if is_location_query else 'No'}")
-        
-        all_results = []
-        sources_used = []
-        
-        # Strategy 1: Use Google Custom Search as primary (high quality and comprehensive)
-        if self.google_api_key and self.google_cse_id:
-            print("🚀 Using Google Custom Search as primary search engine...")
-            google_results = self._search_google(query)
-            if google_results:
-                all_results.extend(google_results)
-                sources_used.append("Google Custom Search")
-                print(f"✅ Google: Found {len(google_results)} results")
-        
-        # Strategy 2: Use Serper API as secondary (fast and reliable)
-        if len(all_results) < 6 and self.serper_api_key:
-            print("🔍 Enhancing with Serper API...")
-            serper_results = self._search_serper(query)
-            if serper_results:
-                all_results.extend(serper_results)
-                if "Serper API" not in sources_used:
-                    sources_used.append("Serper API")
-                print(f"✅ Serper: Found {len(serper_results)} results")
-        
-        # Strategy 3: Use Tavily for location-specific queries or additional coverage
-        if is_location_query or len(all_results) < 8:
-            print("🎯 Using Tavily AI for enhanced search...")
-            tavily_results = self._search_tavily(query, language)
-            if tavily_results:
-                all_results.extend(tavily_results)
-                if "Tavily AI" not in sources_used:
-                    sources_used.append("Tavily AI")
-                print(f"✅ Tavily: Found {len(tavily_results)} results")
-        
-        # Strategy 4: Use DuckDuckGo as final fallback
-        if len(all_results) < 10:
-            print("🦆 Using DuckDuckGo for comprehensive coverage...")
-            ddg_results = self._search_duckduckgo(query)
-            if ddg_results:
-                all_results.extend(ddg_results)
-                sources_used.append("DuckDuckGo")
-                print(f"✅ DuckDuckGo: Found {len(ddg_results)} results")
-        
-        print(f"📊 Total sources used: {', '.join(sources_used)}")
+
+        tasks = []
+        results_map: Dict[str, List[SearchResult]] = {}
+
+        def submit(executor, name, fn, *args):
+            try:
+                future = executor.submit(fn, *args)
+                tasks.append((name, future))
+            except Exception as e:
+                print(f"⚠️ Failed to submit task {name}: {e}")
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            if self.google_api_key and self.google_cse_id:
+                submit(executor, 'Google Custom Search', self._search_google, query)
+            if self.serper_api_key:
+                submit(executor, 'Serper API', self._search_serper, query)
+            # Tavily: only if location or we need more coverage
+            submit(executor, 'Tavily AI', self._search_tavily, query, language)
+            # DDG always as final fallback
+            submit(executor, 'DuckDuckGo', self._search_duckduckgo, query)
+
+            try:
+                deadline = self.global_timeout
+                start = datetime.now()
+                for name, future in tasks:
+                    remaining = max(0.1, deadline - (datetime.now() - start).total_seconds())
+                    if remaining <= 0:
+                        break
+                    try:
+                        data = future.result(timeout=remaining)
+                        if data:
+                            results_map[name] = data
+                    except Exception as e:
+                        print(f"⚠️ {name} timed out/failed: {e}")
+            finally:
+                # Best-effort: cancel unfinished tasks
+                for _, f in tasks:
+                    if not f.done():
+                        f.cancel()
+
+        all_results: List[SearchResult] = []
+        sources_used: List[str] = []
+        # Preserve a priority order when merging
+        for key in ["Google Custom Search", "Serper API", "Tavily AI", "DuckDuckGo"]:
+            if key in results_map and results_map[key]:
+                sources_used.append(key)
+                all_results.extend(results_map[key])
+
+        print(f"📊 Total sources used: {', '.join(sources_used) if sources_used else 'None'}")
         print(f"📈 Total results found: {len(all_results)}")
-        
+
         return {
             'query': query,
             'language': language,
-            'results': all_results[:10],  # Return top 10 results
+            'results': all_results[:10],
             'sources_used': sources_used,
             'total_found': len(all_results),
             'timestamp': datetime.now().isoformat()

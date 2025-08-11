@@ -278,6 +278,16 @@ def search():
                     "language_detected": language_name,
                     "sources_count": search_data['total_found']
                 })
+            else:
+                # Agent indisponível: responder com fallback estático
+                response_html = generate_fallback_response(query)
+                return jsonify({
+                    "success": True,
+                    "intelligence": response_html,
+                    "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
+                    "language_detected": "Portuguese (Brazilian)",
+                    "sources_count": 0
+                })
 
         except Exception as agent_error:
             print(f"⚠️ Erro no agente: {agent_error}")
@@ -286,8 +296,19 @@ def search():
                 "success": True,
                 "intelligence": response_html,
                 "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
-                "language_detected": "Portuguese (Brazilian)"
+                "language_detected": "Portuguese (Brazilian)",
+                "sources_count": 0
             })
+
+        # Retorno de segurança (não deve ser alcançado)
+        response_html = generate_fallback_response(query)
+        return jsonify({
+            "success": True,
+            "intelligence": response_html,
+            "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
+            "language_detected": "Portuguese (Brazilian)",
+            "sources_count": 0
+        })
 
     except Exception as e:
         print(f"❌ Erro crítico em /search: {e}")
