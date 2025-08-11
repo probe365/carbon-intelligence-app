@@ -4,7 +4,7 @@ services:
     env: python
     repo: https://github.com/probe365/carbon-intelligence-app.git
     branch: master
-    buildCommand: "pip install -r requirements.txt"
+  buildCommand: "pip install -r requirements.txt && python seed_trials.py"
     startCommand: "gunicorn -w ${WEB_CONCURRENCY:-2} -k gthread --threads ${GUNICORN_THREADS:-4} -b 0.0.0.0:$PORT app:app --timeout ${GUNICORN_TIMEOUT:-120}"
     autoDeploy: true
     envVars:

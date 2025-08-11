@@ -19,6 +19,20 @@ If you deploy via Dashboard instead of Blueprint:
 - Start command: `gunicorn -w ${WEB_CONCURRENCY:-2} -k gthread --threads ${GUNICORN_THREADS:-4} -b 0.0.0.0:$PORT app:app --timeout ${GUNICORN_TIMEOUT:-120}`
 - Disk: mount `/var/data` (1GB) and set env: `DB_PATH=/var/data/trials.db`
 - Env: set a stable `SECRET_KEY`
+
+### Default Demo Trial (for Render/first boot)
+
+If the database is empty, a default trial is seeded automatically:
+
+- **Trial Key:** `CARBON-DEMO123456`
+- **Email:** `demo@carbon.com`
+- **Name:** `Demo User`
+- **Valid for:** 14 days, 100 queries
+
+You can change these by setting the env vars `SEED_TRIAL_KEY`, `SEED_TRIAL_EMAIL`, and `SEED_TRIAL_NAME` before build.
+
+---
+
 ### Health and Diagnostics
 
 - `/health` — basic service status
