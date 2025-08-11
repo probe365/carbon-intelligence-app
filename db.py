@@ -28,6 +28,37 @@ if _db_dir and not os.path.exists(_db_dir):
     except Exception as e:
         print(f"[DB] Unexpected error creating '{_db_dir}': {e}")
 
+# Preflight writable check: give a clear error early if directory is not writable.
+try:
+    _parent = os.path.dirname(DB_NAME) or "."
+    if _parent and os.path.isdir(_parent):
+        test_file = os.path.join(_parent, ".__db_write_test__")
+        with open(test_file, "w") as f:
+            f.write("ok")
+        os.remove(test_file)
+    else:
+        # Attempt to create if it doesn't exist (may fail and be caught below)
+        os.makedirs(_parent, exist_ok=True)
+except PermissionError as e:
+    # Allow a graceful fallback when running on a free tier without disk support.
+    if os.getenv("ALLOW_DB_FALLBACK", "1").lower() in ("1", "true", "yes"): 
+        fallback = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trials.db")
+        print(
+            f"[DB][WARN] Cannot write to configured DB_PATH '{DB_NAME}' ({e}). "
+            f"Falling back to non-persistent local file '{fallback}'. Upgrade and add a disk to persist data."
+        )
+        DB_NAME = fallback
+        _db_dir = os.path.dirname(DB_NAME)
+    else:
+        msg = (
+            f"[DB][FATAL] Directory not writable for DB_PATH='{DB_NAME}'. Attach a Render Disk mounted at '{_parent}' "
+            f"(Render UI: Service -> Disks -> Add Disk, Mount Path '{_parent}', then redeploy) or change DB_PATH. Error: {e}"
+        )
+        print(msg)
+        raise SystemExit(1)
+except Exception as e:
+    print(f"[DB] Warning during writable preflight: {e}")
+
 
 def _migrate_bundled_db_if_needed():
     """Copy a bundled trials.db to the persistent DB path on first boot.
