@@ -18,7 +18,7 @@ import io
 from db import (
     DB_NAME, init_db, trial_exists, save_trial_to_db,
     get_trial_by_key, get_trial_by_key_fuzzy, count_trials, increment_queries_used,
-    get_all_trials, upgrade_db  # ✅ novo import
+    get_all_trials, upgrade_db, seed_default_trial  # ✅ novo import
 )
 
 
@@ -37,6 +37,7 @@ from enhanced_bilingual_agent import BilingualCarbonAgent
 # 🔧 Inicialização
 init_db()
 upgrade_db()
+seed_default_trial()
 
 
 load_dotenv()

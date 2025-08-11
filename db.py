@@ -2,7 +2,7 @@ import sqlite3
 import uuid
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Choose a persistent path for SQLite when available (e.g., on Render with a mounted disk)
 _env_db_path = os.getenv("DB_PATH")
@@ -260,3 +260,40 @@ def update_expired_trials():
     conn.commit()
     conn.close()
     return affected
+
+def seed_default_trial():
+    """Seed a default trial at runtime if DB is empty and seeding not disabled.
+
+    Disk mounts (e.g. Render) are only available at runtime, so build-time seeding
+    is ineffective. This runs after init_db/upgrade_db. Controlled by env:
+      DISABLE_DB_SEED=1 -> skip
+      SEED_TRIAL_KEY / SEED_TRIAL_EMAIL / SEED_TRIAL_NAME to customize
+    """
+    if os.getenv("DISABLE_DB_SEED") in ("1", "true", "True"):
+        return
+    try:
+        if count_trials() > 0:
+            return
+        key = os.getenv("SEED_TRIAL_KEY", "CARBON-DEMO123456").upper()
+        email = os.getenv("SEED_TRIAL_EMAIL", "demo@carbon.com").lower()
+        name = os.getenv("SEED_TRIAL_NAME", "Demo User")
+        start = datetime.utcnow()
+        end = start + timedelta(days=14)
+        trial_data = {
+            "trial_key": key,
+            "full_name": name,
+            "email": email,
+            "company": "DemoCorp",
+            "role": "Demo",
+            "country": "DemoLand",
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "queries_used": 0,
+            "queries_limit": 100,
+            "registration_date": start.isoformat(),
+            "status": "active"
+        }
+        save_trial_to_db(trial_data)
+        print(f"[SEED] Default trial seeded: {key} ({email})")
+    except Exception as e:
+        print(f"[SEED] Failed to seed default trial: {e}")
