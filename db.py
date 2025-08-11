@@ -154,6 +154,31 @@ def get_trial_by_key(trial_key):
         }
     return None
 
+def get_trial_by_key_fuzzy(trial_key):
+    """Lookup trial by key ignoring case and hyphens to tolerate formatting differences."""
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT email, trial_key, queries_used, queries_limit, end_date
+        FROM trials
+        WHERE UPPER(REPLACE(trial_key, '-', '')) = UPPER(REPLACE(?, '-', ''))
+        LIMIT 1
+        """,
+        (trial_key,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return {
+            "email": row[0],
+            "trial_key": row[1],
+            "queries_used": row[2],
+            "queries_limit": row[3],
+            "end_date": row[4]
+        }
+    return None
+
 def count_trials(status=None):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()

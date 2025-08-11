@@ -17,7 +17,7 @@ import io
 # 🗃️ Banco de dados
 from db import (
     DB_NAME, init_db, trial_exists, save_trial_to_db,
-    get_trial_by_key, count_trials, increment_queries_used,
+    get_trial_by_key, get_trial_by_key_fuzzy, count_trials, increment_queries_used,
     get_all_trials, upgrade_db  # ✅ novo import
 )
 
@@ -198,7 +198,7 @@ def validate_trial():
         if not trial_key:
             return jsonify({"success": False, "message": "Trial key é obrigatório."}), 400
 
-        trial_data = get_trial_by_key(trial_key)
+        trial_data = get_trial_by_key(trial_key) or get_trial_by_key_fuzzy(trial_key)
         if not trial_data:
             return jsonify({"success": False, "message": "Trial key inválido."}), 401
 
@@ -243,7 +243,7 @@ def search():
             print(f"[SEARCH] DB: {os.path.abspath(DB_NAME)} | trial_key: {trial_key}")
         except Exception:
             pass
-        trial_data = get_trial_by_key(trial_key)
+        trial_data = get_trial_by_key(trial_key) or get_trial_by_key_fuzzy(trial_key)
         if not trial_data:
             print(f"[SEARCH] Trial not found for key: {trial_key}")
         # Função utilitária para validar trial
@@ -263,9 +263,14 @@ def search():
         if not is_valid:
             return jsonify({"success": False, "message": validation_msg}), 401
 
-        # ✅ Atualiza contador de uso
-        increment_queries_used(trial_key)
-        trial_data = get_trial_by_key(trial_key)  # Recarrega dados atualizados
+        # ✅ Atualiza contador de uso usando a chave canônica do DB
+        canonical_key = trial_data.get('trial_key', trial_key)
+        try:
+            print(f"[SEARCH] Using canonical key for increment: {canonical_key}")
+        except Exception:
+            pass
+        increment_queries_used(canonical_key)
+        trial_data = get_trial_by_key(canonical_key)  # Recarrega dados atualizados
 
         # 🤖 Chamada ao agente
         try:
