@@ -10,6 +10,8 @@ services:
     envVars:
       - key: DB_PATH
         value: /var/data/trials.db
+      - key: SEARCH_USE_DDG
+        value: "0"
       - key: CRON_SECRET
         generateValue: true
       - key: WEB_CONCURRENCY

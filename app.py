@@ -238,7 +238,14 @@ def search():
         if not query or not trial_key:
             return jsonify({"success": False, "message": "Query e trial key são obrigatórios."}), 400
 
+        # Log DB path and trial lookup for diagnostics
+        try:
+            print(f"[SEARCH] DB: {os.path.abspath(DB_NAME)} | trial_key: {trial_key}")
+        except Exception:
+            pass
         trial_data = get_trial_by_key(trial_key)
+        if not trial_data:
+            print(f"[SEARCH] Trial not found for key: {trial_key}")
         # Função utilitária para validar trial
         def is_trial_valid(trial_data):
             if not trial_data:

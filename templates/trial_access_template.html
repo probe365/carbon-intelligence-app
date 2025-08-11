@@ -129,20 +129,17 @@
                 });
         }
         
-        // AUTO-FILL TRIAL KEY FROM REGISTRATION
+        // AUTO-FILL + AUTO-VALIDATE TRIAL KEY FROM REGISTRATION
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded successfully');
-            
-            // Try to get trial key from localStorage
             const savedTrialKey = localStorage.getItem('carbon_trial_key');
             if (savedTrialKey) {
                 document.getElementById('trialKey').value = savedTrialKey;
-                
-                // Show hint that key was auto-filled
                 const debugInfo = document.getElementById('debugInfo');
                 const debugText = document.getElementById('debugText');
                 debugInfo.style.display = 'block';
-                debugText.innerHTML = '✅ Trial key auto-filled from registration. Click "Access Platform" to continue.';
+                debugText.innerHTML = '🔄 Validating saved trial key...';
+                doValidate(savedTrialKey, true);
             }
         });
         
@@ -167,7 +164,14 @@
             accessBtn.disabled = true;
             
             debugText.innerHTML = `Sending request to /validate_trial...`;
-            
+            doValidate(trialKey, false, () => {
+                accessBtn.innerHTML = originalText;
+                accessBtn.disabled = false;
+            });
+        }
+
+        async function doValidate(trialKey, silent=false, finalizeCb){
+            const debugText = document.getElementById('debugText');
             try {
                 const response = await fetch('/validate_trial', {
                     method: 'POST',
@@ -177,39 +181,29 @@
                     },
                     body: JSON.stringify({ trial_key: trialKey })
                 });
-                
-                debugText.innerHTML = `Response received. Status: ${response.status}`;
-                
                 const result = await response.json();
-                debugText.innerHTML = `Response parsed: Success = ${result.success}`;
-                
-                if (result.success) {
+                if (result && result.success) {
                     currentTrial = result.trial_data;
-                    
-                    // Hide access form and show platform
+                    localStorage.setItem('carbon_trial_key', currentTrial.trial_key);
                     document.getElementById('accessForm').style.display = 'none';
                     document.getElementById('trialBanner').classList.add('active');
                     document.getElementById('platformInterface').classList.add('active');
-                    
-                    // Update trial info
                     document.getElementById('queriesLeft').textContent = 100 - result.trial_data.queries_used;
                     document.getElementById('daysLeft').textContent = result.days_remaining;
-                    
-                    debugText.innerHTML = '✅ Access granted successfully!';
-                    
+                    if (!silent) debugText.innerHTML = '✅ Access granted successfully!';
+                    return true;
                 } else {
-                    alert(result.message || 'Invalid trial key.');
-                    accessBtn.innerHTML = originalText;
-                    accessBtn.disabled = false;
-                    debugText.innerHTML = `❌ Validation failed: ${result.message}`;
+                    if (!silent) alert(result.message || 'Invalid trial key.');
+                    debugText.innerHTML = `❌ Validation failed: ${result && result.message ? result.message : 'Unknown'}`;
+                    return false;
                 }
-                
-            } catch (error) {
-                console.error('Validation error:', error);
-                alert(`Error validating trial: ${error.message}`);
-                accessBtn.innerHTML = originalText;
-                accessBtn.disabled = false;
-                debugText.innerHTML = `❌ Error: ${error.message}`;
+            } catch (err) {
+                console.error('Validation error:', err);
+                if (!silent) alert(`Error validating trial: ${err.message}`);
+                debugText.innerHTML = `❌ Error: ${err.message}`;
+                return false;
+            } finally {
+                if (typeof finalizeCb === 'function') finalizeCb();
             }
         }
         
@@ -219,7 +213,7 @@
         }
         
         // SEARCH FUNCTION
-        async function performSearch() {
+    async function performSearch() {
             const query = document.getElementById('searchQuery').value.trim();
             const resultDiv = document.getElementById('result');
             const searchBtn = document.querySelector('.search-btn');
@@ -251,6 +245,7 @@
                     })
                 });
                 
+                const status = response.status;
                 const result = await response.json();
                 
                 if (result.success) {
@@ -263,6 +258,20 @@
                         searchBtn.disabled = false;
                     }, 2000);
                     
+                } else if (status === 401 && /Trial key inválido/i.test(result.message || '')) {
+                    // Silent re-validate and retry once
+                    const savedKey = localStorage.getItem('carbon_trial_key');
+                    if (savedKey && await doValidate(savedKey, true)) {
+                        return performSearch();
+                    }
+                    resultDiv.innerHTML = `
+                        <div style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px;">
+                            <h3>❌ Search Error</h3>
+                            <p>${result.message}</p>
+                        </div>
+                    `;
+                    searchBtn.innerHTML = originalText;
+                    searchBtn.disabled = false;
                 } else {
                     resultDiv.innerHTML = `
                         <div style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px;">

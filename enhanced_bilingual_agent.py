@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import logging
 
 @dataclass
 class SearchResult:
@@ -47,6 +48,10 @@ class BilingualCarbonAgent:
             self.global_timeout = float(os.getenv('SEARCH_TIMEOUT_SECONDS', '9'))
         except Exception:
             self.global_timeout = 9.0
+        # Toggle for DDG usage (disable on platforms that rate-limit)
+        self.use_ddg = os.getenv('SEARCH_USE_DDG', '1') not in ('0', 'false', 'False', '')
+        # Suppress noisy logs from duckduckgo_search
+        logging.getLogger('duckduckgo_search').setLevel(logging.WARNING)
         
         if self.google_api_key and self.google_cse_id:
             print("✅ Google Custom Search API configured - Primary search engine")
@@ -282,7 +287,7 @@ Como posso ajudá-lo hoje?""",
         """Fallback search using DuckDuckGo"""
         try:
             from duckduckgo_search import DDGS
-            
+
             results = []
             with DDGS() as ddgs:
                 for result in ddgs.text(query, max_results=5):
@@ -293,11 +298,12 @@ Como posso ajudá-lo hoje?""",
                         source="DuckDuckGo",
                         score=0.6
                     ))
-            
+
             return results
-            
+
         except Exception as e:
-            print(f"⚠️ DuckDuckGo search error: {e}")
+            # Treat DDG issues as non-fatal
+            print(f"⚠️ DuckDuckGo fallback unavailable: {e}")
             return []
     
     def comprehensive_search(self, query: str) -> Dict:
@@ -324,8 +330,9 @@ Como posso ajudá-lo hoje?""",
                 submit(executor, 'Serper API', self._search_serper, query)
             # Tavily: only if location or we need more coverage
             submit(executor, 'Tavily AI', self._search_tavily, query, language)
-            # DDG always as final fallback
-            submit(executor, 'DuckDuckGo', self._search_duckduckgo, query)
+            # DDG as optional final fallback
+            if self.use_ddg:
+                submit(executor, 'DuckDuckGo', self._search_duckduckgo, query)
 
             try:
                 deadline = self.global_timeout
@@ -481,7 +488,8 @@ How can I assist you today?"""
         else:
             status_info.append("❌ Serper API: Chave ausente")
         
-        status_info.append("✅ DuckDuckGo: Sempre disponível")
+        # DuckDuckGo status
+        status_info.append("✅ DuckDuckGo: Disponível" if self.use_ddg else "⏸️ DuckDuckGo: Desativado")
         
         if language == 'pt-BR':
             return self.pt_responses['api_status'].format(
