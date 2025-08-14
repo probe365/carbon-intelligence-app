@@ -39,9 +39,16 @@ init_db()
 upgrade_db()
 seed_default_trial()
 try:
-    # Warn if running on Render but DB not on mounted disk
-    if os.getenv('RENDER') and '/var/data/' not in os.path.abspath(DB_NAME):
-        print(f"[WARN] DB path {os.path.abspath(DB_NAME)} is not on /var/data persistent disk. Set DB_PATH=/var/data/trials.db and attach a disk to persist trials.")
+    # Warn if running on Render but DB not on mounted disk (can suppress with SUPPRESS_PERSIST_WARN=1)
+    if (
+        os.getenv('RENDER')
+        and '/var/data/' not in os.path.abspath(DB_NAME)
+        and os.getenv('SUPPRESS_PERSIST_WARN', '0') not in ('1', 'true', 'True')
+    ):
+        print(
+            f"[WARN] DB path {os.path.abspath(DB_NAME)} is not on /var/data persistent disk. "
+            "Data may reset on new deploy. Upgrade & add a disk or set SUPPRESS_PERSIST_WARN=1 to silence this."
+        )
 except Exception:
     pass
 
@@ -579,6 +586,34 @@ def export_csv():
         output,
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment;filename=trials_export.csv"}
+    )
+
+@app.route('/admin/export-csv-full')
+def export_csv_full():
+    """Enhanced lossless CSV export including all key fields for backup/restore."""
+    if not session.get('logado'):
+        return redirect(url_for('login'))
+    trials = get_all_trials()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    headers = [
+        "email","trial_key","full_name","company","role","country",
+        "start_date","end_date","queries_used","queries_limit","registration_date",
+        "last_access","status"
+    ]
+    writer.writerow(headers)
+    for t in trials:
+        writer.writerow([
+            t.get("email",""), t.get("trial_key",""), t.get("full_name",""), t.get("company",""),
+            t.get("role",""), t.get("country",""), t.get("start_date",""), t.get("end_date",""),
+            t.get("queries_used",0), t.get("queries_limit",0), t.get("registration_date",""),
+            t.get("last_access",""), t.get("status","")
+        ])
+    output.seek(0)
+    return Response(
+        output,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=trials_export_full.csv"}
     )
 
 from openpyxl import Workbook

@@ -251,6 +251,7 @@ def get_all_trials():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT email, trial_key, full_name, company, role, country,
+               start_date, end_date,
                queries_used, queries_limit, registration_date, status, last_access
         FROM trials
         ORDER BY registration_date DESC
@@ -267,11 +268,13 @@ def get_all_trials():
             "company": row[3],
             "role": row[4],
             "country": row[5],
-            "queries_used": row[6],
-            "queries_limit": row[7],
-            "registration_date": row[8],
-            "status": row[9],
-            "last_access": row[10]
+            "start_date": row[6],
+            "end_date": row[7],
+            "queries_used": row[8],
+            "queries_limit": row[9],
+            "registration_date": row[10],
+            "status": row[11],
+            "last_access": row[12]
         })
     return trials
 
