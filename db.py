@@ -278,6 +278,21 @@ def get_all_trials():
         })
     return trials
 
+def list_trial_keys(limit=20):
+    """Return a list of trial_key values for debugging diagnostics.
+
+    limit: cap number of keys returned to avoid huge log lines.
+    """
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cur = conn.cursor()
+        cur.execute("SELECT trial_key FROM trials ORDER BY id DESC LIMIT ?", (limit,))
+        rows = cur.fetchall()
+        conn.close()
+        return [r[0] for r in rows]
+    except Exception:
+        return []
+
 def log_access(trial_key, query, ip_address=None):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()

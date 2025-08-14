@@ -52,7 +52,9 @@
             
             <!-- TRIAL INFO BANNER -->
             <div class="trial-info-banner" id="trialBanner">
-                <p id="trialInfo">✅ Teste Trial Ativo • <span id="queriesLeft">100</span> pesquisas restantes • <span id="daysLeft">14</span> dias restantes</p>
+                <p id="trialInfo">✅ Teste Trial Ativo • <span id="queriesLeft">100</span> pesquisas restantes • <span id="daysLeft">14</span> dias restantes
+                    <button id="changeKeyBtn" onclick="changeTrialKey()" style="margin-left:12px;background:#d84315;color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px;">🔄 Trocar Chave</button>
+                </p>
             </div>
             
             <!-- MAIN PLATFORM INTERFACE -->
@@ -193,8 +195,17 @@
                     if (!silent) debugText.innerHTML = '✅ Access granted successfully!';
                     return true;
                 } else {
-                    if (!silent) alert(result.message || 'Invalid trial key.');
-                    debugText.innerHTML = `❌ Validation failed: ${result && result.message ? result.message : 'Unknown'}`;
+                    if (silent) {
+                        // Silent auto-validation failed (likely stale key after redeploy) -> clear and show form again.
+                        try { localStorage.removeItem('carbon_trial_key'); } catch(e) {}
+                        currentTrial = null;
+                        document.getElementById('accessForm').style.display = 'block';
+                        document.getElementById('platformInterface').classList.remove('active');
+                        document.getElementById('trialBanner').classList.remove('active');
+                    } else {
+                        alert(result.message || 'Invalid trial key.');
+                    }
+                    debugText.innerHTML = `❌ Validation failed: ${result && result.message ? result.message : 'Unknown'} (key cleared, please re-enter)`;
                     return false;
                 }
             } catch (err) {
@@ -264,10 +275,17 @@
                     if (savedKey && await doValidate(savedKey, true)) {
                         return performSearch();
                     }
+            // Stale key path: key removed; prompt user to re-enter
+            try { localStorage.removeItem('carbon_trial_key'); } catch(e) {}
+            currentTrial = null;
+            document.getElementById('accessForm').style.display = 'block';
+            document.getElementById('platformInterface').classList.remove('active');
+            document.getElementById('trialBanner').classList.remove('active');
                     resultDiv.innerHTML = `
                         <div style="background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px;">
                             <h3>❌ Search Error</h3>
                             <p>${result.message}</p>
+                <p style='margin-top:8px;font-size:13px;'>Your stored key was invalid (possibly after a redeploy). It has been cleared. Please re-enter the current trial key above.</p>
                         </div>
                     `;
                     searchBtn.innerHTML = originalText;
@@ -309,6 +327,21 @@
         
         function checkApiStatus() {
             alert('✅ API Status: Online\\n🌐 All services operational\\n⚡ Response time: < 2s');
+        }
+
+        // Allow user to manually clear the stored trial key and re-enter a new one
+        function changeTrialKey(){
+            try { localStorage.removeItem('carbon_trial_key'); } catch(e) {}
+            currentTrial = null;
+            document.getElementById('trialKey').value = '';
+            document.getElementById('accessForm').style.display = 'block';
+            document.getElementById('platformInterface').classList.remove('active');
+            document.getElementById('trialBanner').classList.remove('active');
+            const debugInfo = document.getElementById('debugInfo');
+            const debugText = document.getElementById('debugText');
+            debugInfo.style.display = 'block';
+            debugText.innerHTML = '🔄 Trial key cleared. Please enter a new key.';
+            document.getElementById('trialKey').focus();
         }
         
         // Auto-detect language on input

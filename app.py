@@ -18,7 +18,7 @@ import io
 from db import (
     DB_NAME, init_db, trial_exists, save_trial_to_db,
     get_trial_by_key, get_trial_by_key_fuzzy, count_trials, increment_queries_used,
-    get_all_trials, upgrade_db, seed_default_trial  # ✅ novo import
+    get_all_trials, upgrade_db, seed_default_trial, list_trial_keys  # ✅ novo import
 )
 
 
@@ -259,7 +259,10 @@ def search():
             pass
         trial_data = get_trial_by_key(trial_key) or get_trial_by_key_fuzzy(trial_key)
         if not trial_data:
-            print(f"[SEARCH] Trial not found for key: {trial_key}")
+            try:
+                print(f"[SEARCH] Trial not found for key: {trial_key}. Existing keys snapshot: {list_trial_keys()}")
+            except Exception:
+                pass
         # Função utilitária para validar trial
         def is_trial_valid(trial_data):
             if not trial_data:
