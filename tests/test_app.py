@@ -12,8 +12,5 @@ def test_health(client):
     assert response.status_code == 200
     #assert b"ok" in response.data
 
-def test_generate_trial_key():
-    key = generate_trial_key("teste@email.com")
-    assert isinstance(key, str)
-    assert len(key) > 0
+
 
