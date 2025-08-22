@@ -14,60 +14,45 @@
     </style>
 </head>
 <body>
-    <h1>Painel de Trials Registrados</h1>
-    <table id="trials-table">
+    <h1>Painel de Usuários Registrados</h1>
+    <table id="users-table">
         <thead>
             <tr>
-                <th>Trial Key</th>
                 <th>Nome</th>
                 <th>Email</th>
                 <th>Empresa</th>
+                <th>Função</th>
                 <th>País</th>
-                <th>Início</th>
-                <th>Expira</th>
-                <th>Consultas</th>
-                <th>Status</th>
+                <th>Data de Registro</th>
             </tr>
         </thead>
         <tbody></tbody>
     </table>
 
     <script>
-    async function carregarTrials() {
+    async function carregarUsuarios() {
         try {
-            const res = await fetch('/admin/trials');
+            const res = await fetch('/admin/users');
             const data = await res.json();
-            const tbody = document.querySelector('#trials-table tbody');
-            const now = new Date();
-
-            data.trials.forEach(trial => {
-                const startDate = new Date(trial.registration_date);
-                const endDate = new Date(startDate);
-                endDate.setDate(startDate.getDate() + 7); // exemplo: trial de 7 dias
-
-                const expired = endDate < now;
+            const tbody = document.querySelector('#users-table tbody');
+            data.users.forEach(user => {
                 const row = document.createElement('tr');
-                row.className = expired ? 'expired' : 'active';
-
                 row.innerHTML = `
-                    <td>${trial.trial_key}</td>
-                    <td>${trial.full_name}</td>
-                    <td>${trial.email}</td>
-                    <td>${trial.company}</td>
-                    <td>${trial.country}</td>
-                    <td>${trial.registration_date.slice(0,10)}</td>
-                    <td>${endDate.toISOString().slice(0,10)}</td>
-                    <td>${trial.queries_used}/${trial.queries_limit}</td>
-                    <td>${trial.status}</td>
+                    <td>${user.full_name}</td>
+                    <td>${user.email}</td>
+                    <td>${user.company}</td>
+                    <td>${user.role}</td>
+                    <td>${user.country}</td>
+                    <td>${user.registration_date ? user.registration_date.slice(0,10) : ''}</td>
                 `;
                 tbody.appendChild(row);
             });
         } catch (err) {
-            console.error("Erro ao carregar trials:", err);
+            console.error("Erro ao carregar usuários:", err);
         }
     }
 
-    carregarTrials();
+    carregarUsuarios();
 </script>
 
 </body>

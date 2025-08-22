@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌱 Plataforma Inteligente de Créditos de Carbono</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <div class="header">
+    <h1>🌱 Plataforma Inteligente de Créditos de Carbono</h1>
+    <p>BRUS Inteligência de Mercado Bilingue Potencializada por IA</p>
+  </div>
+  <div class="container">
+    <!-- Banner azul de status do trial -->
+    <div style="background: #2196F3; color: white; padding: 12px 0; border-radius: 8px; text-align: center; margin-bottom: 18px; font-size: 1.1em;">
+      <span style="font-weight: bold;"> </span>  ✔️ • • Visite a COP30 em Belém-PA • • Novembro de 2025 • •
+    </div>
+
+    <!-- SEARCH INTERFACE -->
+    <div class="search-container">
+      <div class="language-detection">
+        <span style="font-weight: bold;">🔍 Language Detection:</span> BR Portuguese (Brazilian) - Location: General
+      </div>
+      <textarea id="searchQuery" class="search-box" placeholder="Carbon credit prices Brazil 2025"></textarea>
+      <div class="search-buttons">
+        <button onclick="performSearch()" class="search-btn">🔍 Buscar Inteligência de Carbono</button>
+        <button onclick="detectLanguage()" class="detect-btn">🌐 Detectar Idioma</button>
+        <button onclick="checkApiStatus()" class="status-btn">⚡ Verificar Status da API</button>
+      </div>
+    </div>
+
+    <!-- Quick Examples -->
+    <div class="examples">
+      <h3>⚡ Quick Examples</h3>
+      <div class="example-grid">
+        <div class="example-item" onclick="setQuery('Onde será a COP30 no Brasil?')">
+          <span class="example-flag">BR</span>
+          <span class="example-text">Onde será a COP30 no Brasil?</span>
+        </div>
+        <div class="example-item" onclick="setQuery('Preços atuais créditos carbono')">
+          <span class="example-flag">BR</span>
+          <span class="example-text">Preços atuais créditos carbono</span>
+        </div>
+        <div class="example-item" onclick="setQuery('Carbon credit prices Brazil 2025')">
+          <span class="example-flag">US</span>
+          <span class="example-text">Carbon credit prices Brazil 2025</span>
+        </div>
+        <div class="example-item" onclick="setQuery('Marco regulatório carbono brasileiro')">
+          <span class="example-flag">BR</span>
+          <span class="example-text">Marco regulatório carbono brasileiro</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resultados da busca -->
+    <div id="result" style="display: block; margin-top: 20px;">
+      <div style="background: #e3f2fd; border-radius: 10px; padding: 18px; margin-bottom: 10px;">
+        <span style="font-weight: bold; color: #1976D2;">🔎 Análise Inteligente: Carbon credit prices Brazil 2025</span>
+        <div style="margin-top: 8px; font-size: 0.98em;">
+          <span style="color: #333;">Pesquisa Realizada:</span> <span style="color: #1976D2;">Idioma: Portuguese (Brazilian) | Fontes: 10 | Estratégia: Global</span>
+        </div>
+      </div>
+      <div style="background: white; border-radius: 10px; padding: 18px;">
+        <span style="font-weight: bold; color: #4a7c59;">Resultados da Pesquisa - Carbon credit prices Brazil 2025</span>
+        <ol style="margin-top: 10px;">
+          <li><span style="font-weight: bold;">1.</span> 'World's largest' carbon credit deal under fire as Amazon prosecutors ...<br>
+            <a href="https://news.mongabay.com/2025/06/worlds-largest-carbon-credit-deal-under-fire-as-amazon-prosecutors/" target="_blank">https://news.mongabay.com/2025/06/worlds-largest-carbon-credit-deal-under-fire-as-amazon-prosecutors/</a>
+          </li>
+          <!-- Adicione mais resultados conforme necessário -->
+        </ol>
+      </div>
+    </div>
+
+    <!-- CONTACT BUTTON -->
+    <div style="text-align: center; margin-top: 30px;">
+      <a href="https://ai-think-solutions.com.br/ai-contatos.html" class="trial-btn" style="background: #4a7c59; color: white;" target="_blank" rel="noopener noreferrer">
+        📬 Fale Conosco / Contact Us
+      </a>
+    </div>
+  </div>
+  <script src="/static/script.js"></script>
+  <script>
+    function setQuery(text) {
+      document.getElementById('searchQuery').value = text;
+    }
+    async function performSearch() {
+      const query = document.getElementById('searchQuery').value.trim();
+      if (!query) return;
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = '<div class="loading">🔄 Buscando resultados...</div>';
+      resultDiv.style.display = 'block';
+      try {
+        const res = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+        const data = await res.json();
+        if (!data.success || !data.results || data.results.length === 0) {
+          resultDiv.innerHTML = '<div style="color:#b30000; padding:20px;">Nenhum resultado encontrado.</div>';
+          return;
+        }
+        // Monta HTML dos resultados
+        let html = `<div style='background:#e3f2fd; border-radius:10px; padding:18px; margin-bottom:10px;'>
+          <span style='font-weight:bold; color:#1976D2;'>🔎 Análise Inteligente: ${data.query}</span>
+          <div style='margin-top:8px; font-size:0.98em;'>
+            <span style='color:#333;'>Idioma:</span> <span style='color:#1976D2;'>${data.language || ''}</span>
+            ${data.location ? ` | <span style='color:#1976D2;'>Localização: ${data.location}</span>` : ''}
+          </div>
+        </div>`;
+        html += `<div style='background:white; border-radius:10px; padding:18px;'>
+          <span style='font-weight:bold; color:#4a7c59;'>Resultados da Pesquisa</span>
+          <ul style='margin-top:10px;'>`;
+        data.results.forEach((r, i) => {
+          html += `<li>
+            <span style='font-weight:bold;'>${i+1}.</span><strong> ${r.title}</strong><br>
+            <a href='${r.url}' target='_blank'>${r.url}</a><br>
+            <span style='color:#555;'>${r.snippet}</span>
+            <span style='color:#888; font-size:0.9em;'> [${r.source}]</span>
+          </li><br>`;
+        });
+        html += '</ul></div>';
+        resultDiv.innerHTML = html;
+      } catch (err) {
+        resultDiv.innerHTML = '<div style="color:#b30000; padding:20px;">Erro ao buscar resultados.</div>';
+      }
+    }
+    function detectLanguage() {
+      alert('Detecção de idioma para: ' + document.getElementById('searchQuery').value);
+    }
+    function checkApiStatus() {
+      alert('Status da API: OK');
+    }
+  </script>
+</body>
+</html>

@@ -214,17 +214,18 @@
     <body>
         <div class="registration-container">
             <div class="logo">🌱</div>
-            <h1>Comece o Seu Teste Gratuito</h1>
-            <p class="subtitle">Obtenha 14 dias de acesso total à Plataforma Inteligente de Créditos de Carbono</p>
+            <h1>Comece a Sua Experiência</h1>
+            <p class="subtitle">Acesse a Plataforma Inteligente de Créditos de Carbono</p>
             
             <div class="benefits">
-                <h3>✨ What You Get</h3>
+                <h3>✨ O que Você Recebe</h3>
                 <ul>
-                    <li><span class="check-icon">✅</span> 100 premium AI searches</li>
-                    <li><span class="check-icon">✅</span> Real-time market data</li>
-                    <li><span class="check-icon">✅</span> Bilingual support (PT/EN)</li>
-                    <li><span class="check-icon">✅</span> Expert analysis & insights</li>
-                    <li><span class="check-icon">✅</span> No credit card required</li>
+                    <li><span class="check-icon">✅</span> Acesso completo à plataforma</li>
+                    <li><span class="check-icon">✅</span> Dados de mercado em tempo real</li>
+                    <li><span class="check-icon">✅</span> Suporte bilíngue (PT/EN)</li>
+                    <li><span class="check-icon">✅</span> Análise e insights de especialistas</li>
+                    <li><span class="check-icon">✅</span> Acesso a webinars exclusivos</li>
+                    <li><span class="check-icon">✅</span> Relatórios personalizados</li>
                 </ul>
             </div>
             
@@ -284,28 +285,14 @@
                 </div>
                 
                 <button type="submit" class="register-btn" id="registerBtn">
-                    🚀 Create Free Trial Account
+                    🚀 Clique para Iniciar
                 </button>
             </form>
             
-            <!-- SUCCESS MESSAGE WITH TRIAL KEY -->
+            <!-- SUCCESS MESSAGE -->
             <div class="success-message" id="successMessage">
-                <h3>🎉 Registration Successful!</h3>
-                <p><strong>Your Trial Access Key:</strong></p>
-                
-                <div class="trial-key-display">
-                    <div class="trial-key-code" id="trialKeyCode">CARBON-XXXXXXXXXX</div>
-                    <button onclick="copyTrialKey()" class="copy-button">📋 Copy Key</button>
-                    <button onclick="showInstructions()" class="copy-button" style="background: #2196F3;">📖 Instructions</button>
-                </div>
-                
-                <p style="margin: 15px 0; color: #155724; font-size: 14px;">
-                    <strong>⚠️ IMPORTANT:</strong> Save this key! You'll need it to access the platform.
-                </p>
-                
-                <a href="/trial" class="access-button">
-                    🔓 Access Platform Now
-                </a>
+                <h3>🎉 Cadastro realizado com sucesso!</h3>
+                <p>Você será redirecionado para a plataforma em instantes...</p>
             </div>
             
             <div class="error-message" id="errorMessage">
@@ -321,15 +308,12 @@
         
         document.getElementById('registrationForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
-            
             const registerBtn = document.getElementById('registerBtn');
             const successMsg = document.getElementById('successMessage');
             const errorMsg = document.getElementById('errorMessage');
             const errorText = document.getElementById('errorText');
-            
             // Validation
             if (!data.fullName || !data.email) {
                 errorText.textContent = 'Please fill in all required fields.';
@@ -337,7 +321,6 @@
                 successMsg.style.display = 'none';
                 return;
             }
-            
             // Email validation
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(data.email)) {
@@ -346,48 +329,37 @@
                 successMsg.style.display = 'none';
                 return;
             }
-            
             registerBtn.innerHTML = '⏳ Creating Account...';
             registerBtn.disabled = true;
             errorMsg.style.display = 'none';
             successMsg.style.display = 'none';
-            
             try {
-                const response = await fetch('/api/register-trial', {
+                const response = await fetch('/api/register', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(data)
                 });
-                
                 const result = await response.json();
-                
                 if (result.success) {
-                    // Store trial key
-                    currentTrialKey = result.trial_key;
-                    
-                    // Display trial key
-                    document.getElementById('trialKeyCode').textContent = result.trial_key;
-                    
-                    // Show success message and hide form
+                    // Salva email do usuário
+                    localStorage.setItem('carbon_user_email', result.user.email);
+                    // Mostra mensagem de sucesso e oculta o formulário
                     successMsg.style.display = 'block';
                     this.style.display = 'none';
-                    
-                    // Store in localStorage for convenience
-                    localStorage.setItem('carbon_trial_key', result.trial_key);
-                    
+                    // Redireciona para a plataforma após 2 segundos
+                    setTimeout(() => { window.location.href = '/trial'; }, 2000);
                 } else {
                     errorText.textContent = result.message || 'Registration failed. Please try again.';
                     errorMsg.style.display = 'block';
-                    registerBtn.innerHTML = '🚀 Create Free Trial Account';
+                    registerBtn.innerHTML = '🚀 Clique para Iniciar';
                     registerBtn.disabled = false;
                 }
-                
             } catch (error) {
                 errorText.textContent = 'Network error. Please check your connection and try again.';
                 errorMsg.style.display = 'block';
-                registerBtn.innerHTML = '🚀 Create Free Trial Account';
+                registerBtn.innerHTML = '🚀 Clique para Iniciar';
                 registerBtn.disabled = false;
             }
         });

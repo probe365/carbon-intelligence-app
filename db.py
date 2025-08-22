@@ -82,20 +82,14 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS trials (
+        CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
-            trial_key TEXT UNIQUE NOT NULL,
             full_name TEXT,
             company TEXT,
             role TEXT,
             country TEXT,
-            start_date TEXT NOT NULL,
-            end_date TEXT NOT NULL,
-            queries_used INTEGER DEFAULT 0,
-            queries_limit INTEGER DEFAULT 100,
-            registration_date TEXT,
-            status TEXT DEFAULT 'active'
+            registration_date TEXT
         )
     """)
     conn.commit()
@@ -105,255 +99,53 @@ def init_db():
 
 
 def upgrade_db():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    # No upgrade needed for users-only schema
+    pass
 
-    # Verifica colunas da tabela trials
-    cursor.execute("PRAGMA table_info(trials)")
-    columns = [col[1] for col in cursor.fetchall()]
-    if 'last_access' not in columns:
-        cursor.execute("ALTER TABLE trials ADD COLUMN last_access TEXT")
-
-    # Verifica se a tabela access_logs existe
-    cursor.execute("""
-        SELECT name FROM sqlite_master
-        WHERE type='table' AND name='access_logs'
-    """)
-    table_exists = cursor.fetchone()
-    if not table_exists:
-        cursor.execute("""
-            CREATE TABLE access_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                trial_key TEXT NOT NULL,
-                query TEXT NOT NULL,
-                timestamp TEXT NOT NULL,
-                ip_address TEXT,
-                FOREIGN KEY(trial_key) REFERENCES trials(trial_key)
-            )
-        """)
-
-    conn.commit()
-    conn.close()
-
-
-def trial_exists(email):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT 1 FROM trials WHERE email = ?", (email,))
-    exists = cursor.fetchone() is not None
-    conn.close()
-    return exists
-
-def save_trial_to_db(trial_data):
+def save_user_to_db(user_data):
     try:
         conn = sqlite3.connect(DB_NAME)
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO trials (
-                email, trial_key, full_name, company, role, country,
-                start_date, end_date, queries_used, queries_limit,
-                registration_date, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO users (
+                email, full_name, company, role, country, registration_date
+            ) VALUES (?, ?, ?, ?, ?, ?)
         """, (
-            trial_data["email"],
-            trial_data["trial_key"],
-            trial_data["full_name"],
-            trial_data["company"],
-            trial_data["role"],
-            trial_data["country"],
-            trial_data["start_date"],
-            trial_data["end_date"],
-            trial_data["queries_used"],
-            trial_data["queries_limit"],
-            trial_data["registration_date"],
-            trial_data["status"]
+            user_data["email"],
+            user_data["full_name"],
+            user_data["company"],
+            user_data["role"],
+            user_data["country"],
+            user_data["registration_date"]
         ))
         conn.commit()
     except Exception as e:
-        print(f"Erro ao salvar trial: {e}")
+        print(f"Erro ao salvar usuário: {e}")
         raise
     finally:
         conn.close()
 
 
-def get_trial_by_key(trial_key):
+def get_all_users():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT email, trial_key, queries_used, queries_limit, end_date
-        FROM trials
-        WHERE trial_key = ?
-    """, (trial_key,))
-    row = cursor.fetchone()
-    conn.close()
-    if row:
-        return {
-            "email": row[0],
-            "trial_key": row[1],
-            "queries_used": row[2],
-            "queries_limit": row[3],
-            "end_date": row[4]
-        }
-    return None
-
-def get_trial_by_key_fuzzy(trial_key):
-    """Lookup trial by key ignoring case and hyphens to tolerate formatting differences."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT email, trial_key, queries_used, queries_limit, end_date
-        FROM trials
-        WHERE UPPER(REPLACE(trial_key, '-', '')) = UPPER(REPLACE(?, '-', ''))
-        LIMIT 1
-        """,
-        (trial_key,)
-    )
-    row = cursor.fetchone()
-    conn.close()
-    if row:
-        return {
-            "email": row[0],
-            "trial_key": row[1],
-            "queries_used": row[2],
-            "queries_limit": row[3],
-            "end_date": row[4]
-        }
-    return None
-
-def count_trials(status=None):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    if status:
-        cursor.execute("SELECT COUNT(*) FROM trials WHERE status = ?", (status,))
-    else:
-        cursor.execute("SELECT COUNT(*) FROM trials")
-    count = cursor.fetchone()[0]
-    conn.close()
-    return count
-
-def increment_queries_used(trial_key):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute("""
-        UPDATE trials
-        SET queries_used = queries_used + 1,
-            last_access = ?
-        WHERE trial_key = ?
-    """, (now, trial_key))
-    conn.commit()
-    conn.close()
-
-
-def get_all_trials():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT email, trial_key, full_name, company, role, country,
-               start_date, end_date,
-               queries_used, queries_limit, registration_date, status, last_access
-        FROM trials
+        SELECT email, full_name, company, role, country, registration_date
+        FROM users
         ORDER BY registration_date DESC
     """)
     rows = cursor.fetchall()
     conn.close()
 
-    trials = []
+    users = []
     for row in rows:
-        trials.append({
+        users.append({
             "email": row[0],
-            "trial_key": row[1],
-            "full_name": row[2],
-            "company": row[3],
-            "role": row[4],
-            "country": row[5],
-            "start_date": row[6],
-            "end_date": row[7],
-            "queries_used": row[8],
-            "queries_limit": row[9],
-            "registration_date": row[10],
-            "status": row[11],
-            "last_access": row[12]
+            "full_name": row[1],
+            "company": row[2],
+            "role": row[3],
+            "country": row[4],
+            "registration_date": row[5]
         })
-    return trials
+    return users
 
-def list_trial_keys(limit=20):
-    """Return a list of trial_key values for debugging diagnostics.
-
-    limit: cap number of keys returned to avoid huge log lines.
-    """
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cur = conn.cursor()
-        cur.execute("SELECT trial_key FROM trials ORDER BY id DESC LIMIT ?", (limit,))
-        rows = cur.fetchall()
-        conn.close()
-        return [r[0] for r in rows]
-    except Exception:
-        return []
-
-def log_access(trial_key, query, ip_address=None):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute("""
-        INSERT INTO access_logs (trial_key, query, timestamp, ip_address)
-        VALUES (?, ?, ?, ?)
-    """, (trial_key, query, timestamp, ip_address))
-    conn.commit()
-    conn.close()
-
-def update_expired_trials():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    now = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute(
-        """
-        UPDATE trials
-        SET status = 'expired'
-        WHERE end_date < ? AND status = 'active'
-        """,
-        (now,),
-    )
-    affected = cursor.rowcount if hasattr(cursor, 'rowcount') else 0
-    conn.commit()
-    conn.close()
-    return affected
-
-def seed_default_trial():
-    """Seed a default trial at runtime if DB is empty and seeding not disabled.
-
-    Disk mounts (e.g. Render) are only available at runtime, so build-time seeding
-    is ineffective. This runs after init_db/upgrade_db. Controlled by env:
-      DISABLE_DB_SEED=1 -> skip
-      SEED_TRIAL_KEY / SEED_TRIAL_EMAIL / SEED_TRIAL_NAME to customize
-    """
-    if os.getenv("DISABLE_DB_SEED") in ("1", "true", "True"):
-        return
-    try:
-        if count_trials() > 0:
-            return
-        key = os.getenv("SEED_TRIAL_KEY", "CARBON-DEMO123456").upper()
-        email = os.getenv("SEED_TRIAL_EMAIL", "demo@carbon.com").lower()
-        name = os.getenv("SEED_TRIAL_NAME", "Demo User")
-        start = datetime.utcnow()
-        end = start + timedelta(days=14)
-        trial_data = {
-            "trial_key": key,
-            "full_name": name,
-            "email": email,
-            "company": "DemoCorp",
-            "role": "Demo",
-            "country": "DemoLand",
-            "start_date": start.isoformat(),
-            "end_date": end.isoformat(),
-            "queries_used": 0,
-            "queries_limit": 100,
-            "registration_date": start.isoformat(),
-            "status": "active"
-        }
-        save_trial_to_db(trial_data)
-        print(f"[SEED] Default trial seeded: {key} ({email})")
-    except Exception as e:
-        print(f"[SEED] Failed to seed default trial: {e}")

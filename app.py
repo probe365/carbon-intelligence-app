@@ -1,43 +1,35 @@
+
 """
 Carbon Intelligence App — Probe365
 ==================================
 Plataforma Flask para visualização e gestão de créditos de carbono.
 """
 
-# 📦 Imports principais
-from flask import Flask, render_template, request, jsonify
+# Imports
+from flask import Flask, render_template, request, jsonify, Response, redirect, url_for, session
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-import os, secrets, hashlib, traceback, shutil, sqlite3
-from flask import Response
-from flask import Flask, request, redirect, url_for, session, render_template
-import csv
-import io
-
-# 🗃️ Banco de dados
-from db import (
-    DB_NAME, init_db, trial_exists, save_trial_to_db,
-    get_trial_by_key, get_trial_by_key_fuzzy, count_trials, increment_queries_used,
-    get_all_trials, upgrade_db, seed_default_trial, list_trial_keys  # ✅ novo import
-)
-
-
-from responses import (
-    format_agent_html,
-    generate_fallback_response
-)
-
+import os, secrets, hashlib, traceback, shutil, sqlite3, csv, io
+from db import DB_NAME, init_db, save_user_to_db, get_all_users, upgrade_db
+from responses import format_agent_html, generate_fallback_response
 from flask_cors import CORS
-
 from openpyxl import Workbook
-
-# 🤖 Agente bilíngue
 from enhanced_bilingual_agent import BilingualCarbonAgent
 
+# Flask app initialization
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "default-secret-key")
+app.config['EXPLAIN_TEMPLATE_LOADING'] = True
+CORS(app, supports_credentials=True)
+
+@app.route('/trial')
+def trial():
+    return render_template("trial_template.html")
+
 # 🔧 Inicialização
+
 init_db()
 upgrade_db()
-seed_default_trial()
 try:
     # Warn if running on Render but DB not on mounted disk (can suppress with SUPPRESS_PERSIST_WARN=1)
     if (
@@ -51,15 +43,7 @@ try:
         )
 except Exception:
     pass
-
-
 load_dotenv()
-
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "default-secret-key")
-app.config['EXPLAIN_TEMPLATE_LOADING'] = True
-
-CORS(app, supports_credentials=True)
 
 
 
@@ -76,14 +60,6 @@ except Exception as e:
     print(f"⚠️ BilingualCarbonAgent initialization failed: {e}")
     carbon_agent = None
 
-# 🔐 Geração de chave de trial
-def generate_trial_key(email):
-    try:
-        unique_string = f"{email}{datetime.now().isoformat()}{secrets.token_hex(4)}"
-        trial_key = hashlib.sha256(unique_string.encode()).hexdigest()[:12].upper()
-        return f"CARBON-{trial_key}"
-    except Exception:
-        return f"CARBON-{int(datetime.now().timestamp())}"
 
 # 🌐 Rotas principais
 @app.route('/')
@@ -94,60 +70,64 @@ def home():
 def register_trial():
     return render_template("register_trial_template.html")
 
-@app.route('/api/register-trial', methods=['POST'])
-def api_register_trial():
+@app.route('/api/register', methods=['POST'])
+def api_register():
     try:
         data = request.get_json()
         if not data.get('fullName') or not data.get('email'):
             return jsonify({"success": False, "message": "Nome completo e email são obrigatórios."}), 400
 
         email = data.get('email').lower().strip()
-        if trial_exists(email):
-            return jsonify({"success": False, "message": "Este email já possui um trial ativo."}), 400
-
-        trial_key = generate_trial_key(email)
-        start_date = datetime.now()
-        end_date = start_date + timedelta(days=14)
-
-        trial_data = {
-            "trial_key": trial_key,
-            "full_name": data.get('fullName'),
+        user_data = {
             "email": email,
+            "full_name": data.get('fullName'),
             "company": data.get('company', ''),
             "role": data.get('role', ''),
             "country": data.get('country', ''),
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat(),
-            "queries_used": 0,
-            "queries_limit": 100,
-            "registration_date": datetime.now().isoformat(),
-            "status": "active"
+            "registration_date": datetime.now().isoformat()
         }
-
-        save_trial_to_db(trial_data)
-
-        print(f"=== NEW TRIAL REGISTERED ===\nEmail: {email}\nTrial Key: {trial_key}\n===============================")
-
+        save_user_to_db(user_data)
+        print(f"=== NEW USER REGISTERED ===\nEmail: {email}\nNome: {user_data['full_name']}\n===============================")
         return jsonify({
             "success": True,
-            "message": "Trial registrado com sucesso!",
-            "trial_key": trial_key,
-            "trial_data": {
-                "email": email,
-                "full_name": trial_data["full_name"],
-                "trial_key": trial_key,
-                "queries_limit": 100,
-                "valid_until": end_date.strftime('%Y-%m-%d'),
-                "days_remaining": 14
-            }
+            "message": "Cadastro realizado com sucesso!",
+            "user": user_data
         })
-
     except Exception as e:
-        print(f"ERROR in register_trial: {str(e)}")
+        print(f"ERROR in register: {str(e)}")
         print(traceback.format_exc())
         return jsonify({"success": False, "message": "Erro interno do servidor."}), 500
 
-# ✅ Outras rotas como /search, /validate_trial, /health podem vir abaixo
+# ✅ Outras rotas como /search, /login, /health podem vir abaixo
+
+# Endpoint dinâmico de busca
+@app.route('/api/search', methods=['POST'])
+def api_search():
+    try:
+        data = request.get_json()
+        query = data.get('query', '').strip()
+        if not query:
+            return jsonify({"success": False, "error": "Query não informada."}), 400
+        # Executa busca usando o agente
+        search_data = carbon_agent.comprehensive_search(query)
+        # Formata resposta para frontend
+        results = []
+        for r in search_data.get('results', []):
+            results.append({
+                "title": r.title,
+                "url": r.url,
+                "snippet": r.snippet,
+                "source": r.source
+            })
+        return jsonify({
+            "success": True,
+            "query": query,
+            "language": search_data.get('language'),
+            "location": search_data.get('location'),
+            "results": results
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -167,8 +147,6 @@ def login():
 def health_check():
     return jsonify({
         "status": "online",
-        "total_trials": count_trials(),
-        "active_trials": count_trials("active"),
         "server_time": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         "platform": "Carbon Credits Intelligence",
     "version": "1.1.0"
@@ -203,190 +181,29 @@ def health_db():
 
 
 
-@app.route('/validate_trial', methods=['POST'])
-def validate_trial():
-    try:
-        data = request.get_json()
-        trial_key = data.get('trial_key', '').strip().upper()
-
-        if not trial_key:
-            return jsonify({"success": False, "message": "Trial key é obrigatório."}), 400
-
-        trial_data = get_trial_by_key(trial_key) or get_trial_by_key_fuzzy(trial_key)
-        if not trial_data:
-            return jsonify({"success": False, "message": "Trial key inválido."}), 401
-
-        end_date = datetime.fromisoformat(trial_data['end_date'])
-        days_remaining = (end_date - datetime.now()).days
-
-        if days_remaining < 0:
-            return jsonify({"success": False, "message": "Trial expirado. Faça upgrade para continuar."}), 401
-
-        return jsonify({
-            "success": True,
-            "message": "Trial válido",
-            "trial_data": trial_data,
-            "days_remaining": days_remaining
-        })
-
-    except Exception as e:
-        print(f"ERROR in validate_trial: {str(e)}")
-        return jsonify({"success": False, "message": "Erro interno do servidor."}), 500
 
 
-@app.route('/trial')
-def trial_access():
-    """TRIAL ACCESS PAGE - CORRIGIDO"""
-    return render_template("trial_access_template.html")
+
 
 
 from responses import format_agent_html, generate_fallback_response
 
-@app.route('/search', methods=['POST'])
-def search():
+
+
+
+
+@app.route('/admin/users')
+def admin_users():
+    """🔐 Admin — Lista todos os usuários registrados"""
     try:
-        data = request.get_json()
-        query = data.get('query', '').strip()
-        trial_key = data.get('trial_key', '').strip().upper()
-
-        if not query or not trial_key:
-            return jsonify({"success": False, "message": "Query e trial key são obrigatórios."}), 400
-
-        # Log DB path and trial lookup for diagnostics
-        try:
-            print(f"[SEARCH] DB: {os.path.abspath(DB_NAME)} | trial_key: {trial_key}")
-        except Exception:
-            pass
-        trial_data = get_trial_by_key(trial_key) or get_trial_by_key_fuzzy(trial_key)
-        if not trial_data:
-            try:
-                print(f"[SEARCH] Trial not found for key: {trial_key}. Existing keys snapshot: {list_trial_keys()}")
-            except Exception:
-                pass
-        # Função utilitária para validar trial
-        def is_trial_valid(trial_data):
-            if not trial_data:
-                return False, "Trial key inválido."
-            end_date = datetime.fromisoformat(trial_data['end_date'])
-            days_remaining = (end_date - datetime.now()).days
-            if days_remaining < 0:
-                return False, "Trial expirado. Faça upgrade para continuar."
-            if trial_data.get('queries_used', 0) >= trial_data.get('queries_limit', 100):
-                return False, "Limite de consultas atingido. Faça upgrade para continuar."
-            return True, "Trial válido"
-
-        is_valid, validation_msg = is_trial_valid(trial_data)
-
-        if not is_valid:
-            return jsonify({"success": False, "message": validation_msg}), 401
-
-        # ✅ Atualiza contador de uso usando a chave canônica do DB
-        canonical_key = trial_data.get('trial_key', trial_key)
-        try:
-            print(f"[SEARCH] Using canonical key for increment: {canonical_key}")
-        except Exception:
-            pass
-        increment_queries_used(canonical_key)
-        trial_data = get_trial_by_key(canonical_key)  # Recarrega dados atualizados
-
-        # 🤖 Chamada ao agente
-        try:
-            if carbon_agent:
-                language = carbon_agent.detect_language(query)
-                location_specific = carbon_agent.is_location_specific(query)
-                search_data = carbon_agent.comprehensive_search(query)
-                agent_response = carbon_agent.format_response(search_data)
-
-                language_name = "Portuguese (Brazilian)" if language == 'pt-BR' else "English (US)"
-                response_html = format_agent_html(query, agent_response, language_name, search_data, location_specific)
-
-                return jsonify({
-                    "success": True,
-                    "intelligence": response_html,
-                    "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
-                    "language_detected": language_name,
-                    "sources_count": search_data['total_found']
-                })
-            else:
-                # Agent indisponível: responder com fallback estático
-                response_html = generate_fallback_response(query)
-                return jsonify({
-                    "success": True,
-                    "intelligence": response_html,
-                    "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
-                    "language_detected": "Portuguese (Brazilian)",
-                    "sources_count": 0
-                })
-
-        except Exception as agent_error:
-            print(f"⚠️ Erro no agente: {agent_error}")
-            response_html = generate_fallback_response(query)
-            return jsonify({
-                "success": True,
-                "intelligence": response_html,
-                "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
-                "language_detected": "Portuguese (Brazilian)",
-                "sources_count": 0
-            })
-
-        # Retorno de segurança (não deve ser alcançado)
-        response_html = generate_fallback_response(query)
+        users = get_all_users()  # Retorna lista de dicts
         return jsonify({
-            "success": True,
-            "intelligence": response_html,
-            "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
-            "language_detected": "Portuguese (Brazilian)",
-            "sources_count": 0
-        })
-
-    except Exception as e:
-        print(f"❌ Erro crítico em /search: {e}")
-        print(traceback.format_exc())
-        return jsonify({"success": False, "message": "Erro interno no servidor."}), 500
-
-@app.route('/api/trial-status', methods=['POST'])
-def api_trial_status():
-    """🔍 Consulta status de um trial via chave"""
-    try:
-        data = request.get_json()
-        trial_key = data.get('trial_key', '').strip().upper()
-
-        trial_data = get_trial_by_key(trial_key)
-        if not trial_data:
-            return jsonify({"success": False, "message": "Trial não encontrado."}), 404
-
-        end_date = datetime.fromisoformat(trial_data['end_date'])
-        days_remaining = max(0, (end_date - datetime.now()).days)
-
-        return jsonify({
-            "success": True,
-            "status": trial_data.get('status', 'active'),
-            "queries_used": trial_data['queries_used'],
-            "queries_remaining": trial_data['queries_limit'] - trial_data['queries_used'],
-            "days_remaining": days_remaining,
-            "email": trial_data.get('email'),
-            "full_name": trial_data.get('full_name')
-        })
-
-    except Exception as e:
-        print(f"Erro em /api/trial-status: {e}")
-        return jsonify({"success": False, "message": "Erro ao verificar status."}), 500
-
-
-
-
-@app.route('/admin/trials')
-def admin_trials():
-    """🔐 Admin — Lista todos os trials registrados"""
-    try:
-        trials = get_all_trials()  # Retorna lista de dicts
-        return jsonify({
-            "total_trials": len(trials),
-            "trials": trials
+            "total_users": len(users),
+            "users": users
         })
     except Exception as e:
-        print(f"Erro em /admin/trials: {e}")
-        return jsonify({"success": False, "message": "Erro ao listar trials."}), 500
+        print(f"Erro em /admin/users: {e}")
+        return jsonify({"success": False, "message": "Erro ao listar usuários."}), 500
 
 @app.route('/admin/painel')
 def admin_painel():
@@ -422,6 +239,9 @@ def admin_diagnostics():
     except Exception as e:
         disk_info = {"error": str(e), "dir": os.path.abspath(db_dir)}
 
+    # Get users list for counts
+    users = get_all_users()
+
     return jsonify({
         "success": True,
         "db": {
@@ -437,9 +257,9 @@ def admin_diagnostics():
         },
         "disk": disk_info,
         "counts": {
-            "total_trials": count_trials(),
-            "active_trials": count_trials("active"),
-            "expired_trials": count_trials("expired")
+            "total_users": len(users),
+            "active_users": len([u for u in users if u['status'] == 'active']),
+            "inactive_users": len([u for u in users if u['status'] == 'inactive'])
         },
         "server_time": datetime.utcnow().isoformat() + "Z"
     })
@@ -460,26 +280,13 @@ def debug_search_test():
 
 from flask import render_template_string
 
-from db import update_expired_trials  # certifique-se de importar
-
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if not session.get('logado'):
         return redirect(url_for('login'))
     
-    
 
-    update_expired_trials()  # 🔄 Atualiza status dos trials expirados
-    expired_trials = count_trials(status="expired")
-
-    update_expired_trials()
-    trials = get_all_trials()
-    active_trials = count_trials(status="active")
-
-
-    trials = get_all_trials()
-    active_trials = count_trials(status="active")
-
+    users = get_all_users()
     html_template = """
     <html>
     <head>
@@ -500,16 +307,11 @@ def admin_dashboard():
     </head>
     <body>
         <h1>Admin Dashboard</h1>
-        <p><strong>Trials ativos:</strong> {{ active_trials }}</p>
-        <p><strong>Trials expirados:</strong> {{ expired_trials }}</p>
-
         <div class="links">
             <a href="{{ url_for('export_xlsx') }}">Exportar XLSX</a>
             <a href="{{ url_for('export_csv') }}">Exportar CSV</a>
             <a href="{{ url_for('admin_diagnostics_view') }}">Ver Diagnóstico</a>
-            <a href="#" class="btn" onclick="runExpire()">Atualizar Expirados</a>
         </div>
-
         <table>
             <tr>
                 <th>Nome</th>
@@ -518,48 +320,31 @@ def admin_dashboard():
                 <th>País</th>
                 <th>Função</th>
                 <th>Registro</th>
-                <th>Último acesso</th>
-                <th>Consultas</th>
                 <th>Status</th>
             </tr>
-            {% for trial in trials %}
+            {% for user in users %}
             <tr>
-                <td>{{ trial.full_name }}</td>
-                <td>{{ trial.email }}</td>
-                <td>{{ trial.company }}</td>
-                <td>{{ trial.country }}</td>
-                <td>{{ trial.role }}</td>
-                <td>{{ trial.registration_date }}</td>
-                <td>{{ trial.last_access or '—' }}</td>
-                <td>{{ trial.queries_used }}/{{ trial.queries_limit }}</td>
-                <td style="color: {{ 'red' if trial.status == 'expired' else 'green' }}">{{ trial.status }}</td>
+                <td>{{ user.full_name }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.company }}</td>
+                <td>{{ user.country }}</td>
+                <td>{{ user.role }}</td>
+                <td>{{ user.registration_date }}</td>
+                <td>{{ user.status }}</td>
             </tr>
             {% endfor %}
         </table>
-                <div id="toast" class="toast"></div>
-                <script>
-                    async function runExpire(){
-                        const res = await fetch('/admin/run-expire', { method: 'POST' });
-                        const json = await res.json().catch(() => ({success:false}));
-                        const msg = json && json.success ? `Atualizados: ${json.updated}` : 'Falha ao atualizar';
-                        const t = document.getElementById('toast');
-                        t.textContent = msg; t.style.display = 'block';
-                        setTimeout(()=>{ t.style.display = 'none'; location.reload(); }, 1200);
-                    }
-                </script>
-       
-
-    </body>
-    </html>
-    """
-    return render_template_string(html_template, trials=trials, active_trials=active_trials)
+        </body>
+        </html>
+        """
+    users = get_all_users()
+    return render_template_string(html_template, users=users)
 
 @app.route('/admin/export-csv')
 def export_csv():
     if not session.get('logado'):
         return redirect(url_for('login'))
 
-    trials = get_all_trials()
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -567,28 +352,21 @@ def export_csv():
     # Cabeçalhos
     writer.writerow([
         "Nome", "Email", "Empresa", "País", "Cargo",
-        "Data de Registro", "Último Acesso", "Consultas", "Status"
+        "Data de Registro", "Status"
     ])
-
     # Dados
-    for trial in trials:
+    users = get_all_users()
+    for u in users:
         writer.writerow([
-            trial.get("full_name", ""),
-            trial.get("email", ""),
-            trial.get("company", ""),
-            trial.get("country", ""),
-            trial.get("role", ""),
-            trial.get("registration_date", ""),
-            trial.get("last_access", ""),
-            f'{trial.get("queries_used", 0)}/{trial.get("queries_limit", 100)}',
-            trial.get("status", "")
+            u.get("full_name", ""), u.get("email", ""), u.get("company", ""),
+            u.get("country", ""), u.get("role", ""), u.get("registration_date", ""),
+            u.get("status", "")
         ])
-
     output.seek(0)
     return Response(
         output,
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment;filename=trials_export.csv"}
+        headers={"Content-Disposition": "attachment;filename=users_export.csv"}
     )
 
 @app.route('/admin/export-csv-full')
@@ -596,27 +374,24 @@ def export_csv_full():
     """Enhanced lossless CSV export including all key fields for backup/restore."""
     if not session.get('logado'):
         return redirect(url_for('login'))
-    trials = get_all_trials()
     output = io.StringIO()
     writer = csv.writer(output)
     headers = [
-        "email","trial_key","full_name","company","role","country",
-        "start_date","end_date","queries_used","queries_limit","registration_date",
-        "last_access","status"
+        "email","full_name","company","role","country","registration_date","status"
     ]
     writer.writerow(headers)
-    for t in trials:
+    users = get_all_users()
+    for u in users:
         writer.writerow([
-            t.get("email",""), t.get("trial_key",""), t.get("full_name",""), t.get("company",""),
-            t.get("role",""), t.get("country",""), t.get("start_date",""), t.get("end_date",""),
-            t.get("queries_used",0), t.get("queries_limit",0), t.get("registration_date",""),
-            t.get("last_access",""), t.get("status","")
+            u.get("email", ""), u.get("full_name", ""), u.get("company", ""),
+            u.get("role", ""), u.get("country", ""), u.get("registration_date", ""),
+            u.get("status", "")
         ])
     output.seek(0)
     return Response(
         output,
         mimetype="text/csv",
-        headers={"Content-Disposition": "attachment;filename=trials_export_full.csv"}
+        headers={"Content-Disposition": "attachment;filename=users_export_full.csv"}
     )
 
 from openpyxl import Workbook
@@ -626,44 +401,30 @@ def export_xlsx():
     if not session.get('logado'):
         return redirect(url_for('login'))
 
-    trials = get_all_trials()
-
     wb = Workbook()
     ws = wb.active
-    ws.title = "Trials"
 
     # Cabeçalhos
     headers = [
         "Nome", "Email", "Empresa", "País", "Cargo",
-        "Data de Início", "Data de Expiração", "Último Acesso",
-        "Consultas", "Status"
+        "Data de Registro", "Status"
     ]
     ws.append(headers)
-
-    # Dados
-    for trial in trials:
+    users = get_all_users()
+    for u in users:
         ws.append([
-            trial.get("full_name", ""),
-            trial.get("email", ""),
-            trial.get("company", ""),
-            trial.get("country", ""),
-            trial.get("role", ""),
-            trial.get("start_date", ""),
-            trial.get("end_date", ""),
-            trial.get("last_access", ""),
-            f'{trial.get("queries_used", 0)}/{trial.get("queries_limit", 100)}',
-            trial.get("status", "")
+            u.get("full_name", ""), u.get("email", ""), u.get("company", ""),
+            u.get("country", ""), u.get("role", ""), u.get("registration_date", ""),
+            u.get("status", "")
         ])
-
     # Salvar em memória
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
-
     return Response(
         output,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment;filename=trials_export.xlsx"}
+        headers={"Content-Disposition": "attachment;filename=users_export.xlsx"}
     )
 
 
@@ -678,8 +439,7 @@ def admin_diagnostics_view():
 def admin_run_expire():
     if not session.get('logado'):
         return jsonify({"success": False, "message": "Não autorizado"}), 401
-    updated = update_expired_trials()
-    return jsonify({"success": True, "updated": updated})
+    return jsonify({"success": True})
 
 
 @app.route('/cron/run-expire', methods=['POST'])
@@ -688,8 +448,8 @@ def cron_run_expire():
     expected = os.getenv('CRON_SECRET')
     if not expected or token != expected:
         return jsonify({"success": False, "message": "Unauthorized"}), 401
-    updated = update_expired_trials()
-    return jsonify({"success": True, "updated": updated})
+
+    return jsonify({"success": True,})
 
 
 

@@ -38,8 +38,8 @@ async function buscarInteligenciaDeCarbono(query) {
     if (data.error) {
         alert("Erro: " + data.error);
     } else {
-        console.log("Resultado:", data.resultado);
         // Aqui você pode atualizar o DOM com o resultado
+        // (Removido alert antigo)
     }
 }
 
